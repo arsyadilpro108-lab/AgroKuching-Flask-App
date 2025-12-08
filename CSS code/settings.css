@@ -201,6 +201,22 @@ body {
 .change-password-link:hover {
     text-decoration: underline;
 }
+
+.forgot-password-link-modal {
+    text-align: center;
+    margin: 15px 0 10px 0;
+    font-size: 13px;
+}
+
+.forgot-password-link-modal a {
+    color: #2f9134;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.forgot-password-link-modal a:hover {
+    text-decoration: underline;
+}
 .save-btn {
     width: 100%;
     background: #2e8b57;
