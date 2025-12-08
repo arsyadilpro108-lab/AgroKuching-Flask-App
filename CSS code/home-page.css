@@ -223,6 +223,9 @@ main {
     color: #666;
     margin-bottom: 6px;
     line-height: 1.5;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Post Images */
