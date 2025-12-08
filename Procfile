@@ -1,1 +1,1 @@
-web: eventlet --exec gunicorn app:app -w 1 --preload
+web: gunicorn --worker-class eventlet -w 1 app:app
