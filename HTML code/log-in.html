@@ -12,10 +12,6 @@
     <h2 class="text">Log In</h2>
 
     <input type="text" id="loginUsername" name="username" placeholder="Username" autocomplete="username" required>
-    <div class="forgot-link-single">
-      <a href="#" id="forgotUsername">Forgot Username?</a>
-    </div>
-    
     <div class="password-field">
       <input type="password" id="loginPassword" name="password" placeholder="Password" autocomplete="current-password" required>
       <button type="button" class="toggle-password" id="toggleLoginPassword">
@@ -26,7 +22,7 @@
       </button>
     </div>
     <div class="forgot-link-single">
-      <a href="#" id="forgotPassword">Forgot Password?</a>
+      <a href="/HTML code/forgot-password.html">Forgot Password?</a>
     </div>
 
     <div class="remember-container">
@@ -88,84 +84,6 @@
       } else {
         passwordInput.type = 'password';
         svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
-      }
-    });
-
-    // Forgot Username
-    document.getElementById('forgotUsername').addEventListener('click', async function(e) {
-      e.preventDefault();
-      const email = prompt('Enter your email address to retrieve your username:');
-      
-      if (email) {
-        try {
-          const response = await fetch('/api/forgot-username', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email })
-          });
-          
-          const data = await response.json();
-          
-          if (response.ok) {
-            alert(`Your username is: ${data.username}`);
-          } else {
-            alert(data.message || 'Email not found');
-          }
-        } catch (error) {
-          alert('Could not retrieve username. Please try again.');
-        }
-      }
-    });
-
-    // Forgot Password
-    document.getElementById('forgotPassword').addEventListener('click', async function(e) {
-      e.preventDefault();
-      const username = prompt('Enter your username:');
-      
-      if (username) {
-        const email = prompt('Enter your email address:');
-        
-        if (email) {
-          try {
-            const response = await fetch('/api/forgot-password', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username: username, email: email })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              const newPassword = prompt('Enter your new password (min. 6 characters):');
-              
-              if (newPassword && newPassword.length >= 6) {
-                const resetResponse = await fetch('/api/reset-password', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
-                    username: username, 
-                    email: email,
-                    new_password: newPassword 
-                  })
-                });
-                
-                const resetData = await resetResponse.json();
-                
-                if (resetResponse.ok) {
-                  alert('Password reset successfully! You can now log in with your new password.');
-                } else {
-                  alert(resetData.message || 'Failed to reset password');
-                }
-              } else {
-                alert('Password must be at least 6 characters');
-              }
-            } else {
-              alert(data.message || 'Username or email not found');
-            }
-          } catch (error) {
-            alert('Could not reset password. Please try again.');
-          }
-        }
       }
     });
 

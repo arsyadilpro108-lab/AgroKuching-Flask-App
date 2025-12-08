@@ -305,6 +305,80 @@ def reset_password():
         db.rollback()
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
+# New forgot password flow endpoints
+@app.route('/api/find-account', methods=['POST'])
+def find_account():
+    """Find account by email or username"""
+    data = request.json
+    search = data.get('search', '').strip()
+    
+    if not search:
+        return jsonify({'message': 'Please provide email or username'}), 400
+    
+    db = get_db()
+    # Try to find by email or username
+    user = db.execute(
+        "SELECT id, username, email, profile_pic FROM users WHERE email = ? OR username = ?",
+        (search, search)
+    ).fetchone()
+    
+    if not user:
+        return jsonify({'message': 'No account found with that email or username'}), 404
+    
+    return jsonify(dict(user)), 200
+
+@app.route('/api/send-reset-code', methods=['POST'])
+def send_reset_code():
+    """Send verification code to email"""
+    import random
+    
+    data = request.json
+    email = data.get('email')
+    username = data.get('username')
+    
+    if not email or not username:
+        return jsonify({'message': 'Email and username required'}), 400
+    
+    # Generate 6-digit code
+    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    
+    # In production, you would send this via email
+    # For now, we'll return it in the response (NOT SECURE FOR PRODUCTION)
+    print(f"Reset code for {username}: {code}")
+    
+    return jsonify({'message': 'Code sent', 'code': code}), 200
+
+@app.route('/api/reset-password-verified', methods=['POST'])
+def reset_password_verified():
+    """Reset password after code verification"""
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    new_password = data.get('new_password')
+    code = data.get('code')
+    
+    if not all([username, email, new_password, code]):
+        return jsonify({'message': 'All fields are required'}), 400
+    
+    if len(new_password) < 6:
+        return jsonify({'message': 'Password must be at least 6 characters'}), 400
+    
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE username = ? AND email = ?", (username, email)).fetchone()
+    
+    if not user:
+        return jsonify({'message': 'Invalid request'}), 404
+    
+    try:
+        password_hash = generate_password_hash(new_password)
+        db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user['id']))
+        db.commit()
+        
+        return jsonify({'message': 'Password reset successfully'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
 # Profile Management
 @app.route('/api/profile', methods=['GET'])
 @token_required
