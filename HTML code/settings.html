@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="/CSS code/settings.css" /> 
+</head>
+<body>
+
+    <header class="settings-header">
+        <a href="/HTML code/home-page.html" class="back-btn">←</a>
+        <h1 class="header-title">Settings</h1>
+    </header>
+
+    <main class="settings-page-content">
+        <div class="settings-content-wrapper">
+            <div class="profile-section">
+                <div class="profile-picture-container">
+                    <img id="profilePreview" src="/pictures/Default PFP.png" alt="Profile Picture">
+                    <div class="profile-overlay">
+                        <span class="profile-text">Profile Picture</span>
+                        <label for="profilePicInput" class="choose-file-btn">Choose File</label>
+                    </div>
+                    <input type="file" id="profilePicInput" accept="image/*">
+                </div>
+            </div>
+            
+            <div class="settings-field">
+                <label for="usernameInput">Username</label>
+                <input type="text" id="usernameInput" placeholder="Enter your username">
+            </div>
+
+            <div class="settings-field">
+                <label for="passwordInput">Password</label>
+                <div class="password-container">
+                    <input type="password" id="passwordInput" placeholder="••••••••" readonly>
+                    <button type="button" class="toggle-password" id="togglePassword">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+                <a href="#" id="changePasswordLink" class="change-password-link">Change Password</a>
+            </div>
+
+            <div class="settings-field">
+                <label for="emailInput">Email</label>
+                <input type="email" id="emailInput" placeholder="Enter your email">
+            </div>
+
+            <div class="settings-field">
+                <label for="phoneInput">Phone Number</label>
+                <input type="tel" id="phoneInput" placeholder="Enter your phone number">
+            </div>
+
+            <div class="settings-field">
+                <label for="descriptionInput">Description</label>
+                <textarea id="descriptionInput" placeholder="Write something about yourself, company, etc."></textarea>
+            </div>
+
+            <div class="settings-field">
+                <label>Date of Registration</label>
+                <input type="text" id="regDate" readonly>
+            </div>
+
+            <button class="save-btn" id="saveSettings">Save Changes</button>
+        </div>
+    </main>
+    
+    <!-- Change Password Modal -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <h3>Change Password</h3>
+            <div class="modal-field">
+                <label for="currentPasswordModal">Current Password</label>
+                <div class="password-container">
+                    <input type="password" id="currentPasswordModal" placeholder="Enter current password">
+                    <button type="button" class="toggle-password" id="toggleCurrentPasswordModal">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-field">
+                <label for="newPasswordModal">New Password</label>
+                <div class="password-container">
+                    <input type="password" id="newPasswordModal" placeholder="Enter new password (min. 6 chars)">
+                    <button type="button" class="toggle-password" id="toggleNewPasswordModal">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="confirmChangePassword" class="submit-btn">Change Password</button>
+                <button id="cancelChangePassword" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Crop Modal -->
+    <div class="modal" id="cropModal">
+        <div class="modal-content crop-modal-content">
+            <h3>Crop Profile Picture</h3>
+            <div class="crop-container">
+                <canvas id="cropCanvas"></canvas>
+            </div>
+            <div class="crop-controls">
+                <input type="range" id="zoomSlider" min="1" max="3" step="0.1" value="1">
+                <label for="zoomSlider">Zoom</label>
+            </div>
+            <div class="modal-buttons">
+                <button id="confirmCrop" class="submit-btn">Crop & Save</button>
+                <button id="cancelCrop" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings JavaScript -->
+    <script src="/JS code/settings.js"></script>
+</body>
+</html>

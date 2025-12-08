@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sign Up</title>
+  <link rel="stylesheet" href="/CSS code/sign-up.css">
+</head>
+<body>
+
+  <form id="signupForm" autocomplete="on">
+    <h2 class="text">Sign Up</h2>
+
+    <input type="text" id="username" name="username" placeholder="Username" autocomplete="username" required>
+    <div class="password-field">
+      <input type="password" id="password" name="password" placeholder="Password (min. 6 chars)" autocomplete="new-password" required>
+      <button type="button" class="toggle-password" id="toggleSignupPassword">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
+    </div>
+    <input type="email" id="email" name="email" placeholder="Email" autocomplete="email" required>
+
+    <p>Already have an account? <a href="/HTML code/log-in.html">Login</a></p>
+    
+    <p id="errorMessage" style="color: red; font-weight: bold; margin-bottom: 15px; display: none;"></p>
+   
+    <button type="submit">Sign Up</button>
+  </form>
+
+  <script>
+    // Check if already logged in
+    const existingToken = localStorage.getItem('authToken');
+    if (existingToken) {
+      window.location.replace('/HTML code/home-page.html');
+    }
+
+    const form = document.getElementById('signupForm');
+    const errorMessageElement = document.getElementById('errorMessage');
+
+    // Password visibility toggle
+    document.getElementById('toggleSignupPassword').addEventListener('click', function() {
+      const passwordInput = document.getElementById('password');
+      const svg = this.querySelector('svg');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+      } else {
+        passwordInput.type = 'password';
+        svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+      }
+    });
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      errorMessageElement.style.display = 'none';
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const email = document.getElementById('email').value.trim();
+      
+      if (!username || !password || !email) {
+        errorMessageElement.textContent = 'Please fill in all required fields.';
+        errorMessageElement.style.display = 'block';
+        return;
+      }
+      
+      if (password.length < 6) {
+        errorMessageElement.textContent = 'Password must be at least 6 characters.';
+        errorMessageElement.style.display = 'block';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                email: email
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Registration successful
+            localStorage.setItem('authToken', data.token);
+            window.location.replace('/HTML code/home-page.html');
+        } else {
+            errorMessageElement.textContent = data.message;
+            errorMessageElement.style.display = 'block';
+        }
+
+      } catch (error) {
+        console.error('Registration failed:', error);
+        errorMessageElement.textContent = 'Could not connect to the server. Please try again.';
+        errorMessageElement.style.display = 'block';
+      }
+    });
+  </script>
+
+</body>
+</html>

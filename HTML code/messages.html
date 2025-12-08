@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Messages - AgroKuching</title>
+    <link rel="stylesheet" href="/CSS code/messages.css" />
+</head>
+<body>
+
+    <div class="messages-container">
+        <!-- Connection Status -->
+        <div id="connectionStatus" class="connection-status" style="display: none;">Connecting...</div>
+        
+        <!-- Conversations Sidebar -->
+        <div class="conversations-sidebar">
+            <div class="sidebar-header">
+                <button class="back-btn" onclick="window.location.href='/HTML code/home-page.html'">← Back</button>
+                <h2>Messages</h2>
+            </div>
+            <div class="conversations-list" id="conversationsList">
+                <p class="loading">Loading conversations...</p>
+            </div>
+        </div>
+
+        <!-- Chat area -->
+        <div class="chat-area">
+            <div class="chat-header" id="chatHeader" style="display: none;">
+                <button class="mobile-back-btn" id="mobileBackBtn">←</button>
+                <img id="chatUserPic" src="/pictures/Default PFP.png" alt="User" class="chat-user-pic">
+                <div class="chat-header-info">
+                    <span id="chatUsername">Select a conversation</span>
+                    <span id="chatTypingStatus" class="typing-status" style="display: none;">typing...</span>
+                </div>
+            </div>
+            <div class="messages-area" id="messagesArea">
+                <div class="no-chat-selected">
+                    <h2>Select a conversation to start messaging</h2>
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <div class="typing-avatar">
+                    <img id="typingUserPic" src="/pictures/Default PFP.png" alt="User">
+                </div>
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="message-input-area" id="messageInputArea" style="display: none;">
+                <div class="reply-indicator" id="replyIndicator" style="display: none;"></div>
+                <div class="input-row">
+                    <input type="text" id="messageInput" placeholder="Type a message..." />
+                    <button id="sendBtn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/JS code/messages.js?v=4"></script>
+</body>
+</html>

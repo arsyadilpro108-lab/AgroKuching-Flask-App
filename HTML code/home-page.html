@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgroKuching</title>
+    <link rel="stylesheet" href="/CSS code/home-page.css?v=3" />
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <img src="/pictures/logo.png" alt="Logo" class="brand-logo" />
+            <span class="brand-name">AgroKuching</span>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search posts or users..." autocomplete="off" />
+            <button class="clear-search-icon" id="clearSearch" style="display: none;">&times;</button>
+            <div class="search-dropdown" id="searchDropdown"></div>
+        </div>
+
+        <button class="messages-btn" id="messagesBtn" onclick="window.location.href='/HTML code/messages.html'">
+            💬 Messages
+            <span class="message-badge" id="messageBadge" style="display: none;">0</span>
+        </button>
+
+        <div class="profile-menu">
+            <button class="profile-btn" id="profileBtn">👤</button> 
+            <div class="dropdown" id="profileDropdown">
+                <a href="#" id="profileLink">Profile</a>
+                <a href="/HTML code/settings.html" id="settingsLink">Settings</a>
+                <a href="#" id="logoutLink">Log out</a>
+                <a href="#" id="deleteAccountLink" class="delete-account-link">Delete Account</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Facebook-style Create Post Box -->
+        <div class="create-post-box" id="createPostBox">
+            <div class="create-post-plus-icon">+</div>
+            <div class="create-post-input" id="createPostInput">
+                Create a post
+            </div>
+        </div>
+
+        <div id="postContainer"></div>
+    </main>
+
+    <div class="modal" id="postModal">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <h2>Create a Post</h2>
+            <form id="postForm" autocomplete="off">
+                <label>Title</label>
+                <input type="text" id="postTitle" required autocomplete="off" />
+
+                <label>Price</label>
+                <input type="text" id="postPrice" required autocomplete="off" />
+
+                <label>Description</label>
+                <textarea id="postDescription" rows="4" required autocomplete="off"></textarea>
+
+                <label>Contact Info</label>
+                <input type="text" id="postContact" required autocomplete="off" />
+
+                <label>Product Images</label>
+                <input type="file" id="postImages" accept="image/*" multiple />
+                <div class="preview" id="imagePreview"></div>
+
+                <button type="submit" class="submit-btn">Post</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <span class="close" id="closeEditModal">&times;</span>
+            <h2>Edit Post</h2>
+            <form id="editForm" autocomplete="off">
+                <label>Title</label>
+                <input type="text" id="editTitle" required autocomplete="off" />
+
+                <label>Price</label>
+                <input type="text" id="editPrice" required autocomplete="off" />
+
+                <label>Description</label>
+                <textarea id="editDescription" rows="4" required autocomplete="off"></textarea>
+
+                <label>Contact Info</label>
+                <input type="text" id="editContact" required autocomplete="off" />
+
+                <label>Product Images (optional - leave empty to keep current images)</label>
+                <input type="file" id="editImages" accept="image/*" multiple />
+                <div class="preview" id="editImagePreview"></div>
+
+                <button type="submit" class="submit-btn">Update Post</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <p>Are you sure you want to log out?</p>
+            <button id="confirmLogout" class="submit-btn-red">Yes</button>
+            <button id="cancelLogout" class="submit-btn">No</button>
+        </div>
+    </div>
+
+    <div class="modal" id="imageGallery">
+        <div class="gallery-content">
+            <span class="close" id="closeGallery">&times;</span>
+            <button class="gallery-nav prev" id="galleryPrev">&#10094;</button>
+            <img id="galleryImage" />
+            <button class="gallery-nav next" id="galleryNext">&#10095;</button>
+            <div class="gallery-counter" id="galleryCounter">1 / 1</div>
+        </div>
+    </div>
+
+
+
+    <!-- SocketIO for real-time notifications -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <!-- We link to the rewritten home-page.js -->
+    <script src="/JS code/home-page.js?v=5"></script>
+</body>
+</html>

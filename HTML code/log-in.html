@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Log In</title>
+  <link rel="stylesheet" href="/CSS code/log-in.css">
+</head>
+<body>
+
+  <form id="loginForm" autocomplete="on">
+    <h2 class="text">Log In</h2>
+
+    <input type="text" id="loginUsername" name="username" placeholder="Username" autocomplete="username" required>
+    <div class="forgot-link-single">
+      <a href="#" id="forgotUsername">Forgot Username?</a>
+    </div>
+    
+    <div class="password-field">
+      <input type="password" id="loginPassword" name="password" placeholder="Password" autocomplete="current-password" required>
+      <button type="button" class="toggle-password" id="toggleLoginPassword">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
+    </div>
+    <div class="forgot-link-single">
+      <a href="#" id="forgotPassword">Forgot Password?</a>
+    </div>
+
+    <div class="remember-container">
+      <label>
+        <input type="checkbox" id="rememberMe">
+        <span>Remember Me</span>
+      </label>
+    </div>
+
+    <p>Don't have an account? <a href="/HTML code/sign-up.html">Sign Up</a></p>
+
+
+    <p id="errorMessage" style="color: red; font-weight: bold; margin-bottom: 15px; display: none;"></p>
+    
+    <button type="submit">Log In</button>
+  </form>
+
+  <script>
+    // Clear any old/invalid tokens on login page load
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('clear') === 'true') {
+      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
+    }
+    
+    // Check if already logged in with valid token
+    const existingToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    if (existingToken) {
+      // Try to verify the token is valid by checking if we can access home
+      fetch('/api/profile', {
+        headers: {
+          'Authorization': 'Bearer ' + existingToken
+        }
+      }).then(response => {
+        if (response.ok) {
+          // Token is valid, go to home
+          window.location.replace('/HTML code/home-page.html');
+        } else {
+          // Token is invalid, clear it
+          localStorage.removeItem('authToken');
+        }
+      }).catch(() => {
+        // Error checking token, clear it
+        localStorage.removeItem('authToken');
+      });
+    }
+
+    const form = document.getElementById('loginForm');
+    const errorMessageElement = document.getElementById('errorMessage');
+
+    // Password visibility toggle
+    document.getElementById('toggleLoginPassword').addEventListener('click', function() {
+      const passwordInput = document.getElementById('loginPassword');
+      const svg = this.querySelector('svg');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        svg.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+      } else {
+        passwordInput.type = 'password';
+        svg.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+      }
+    });
+
+    // Forgot Username
+    document.getElementById('forgotUsername').addEventListener('click', async function(e) {
+      e.preventDefault();
+      const email = prompt('Enter your email address to retrieve your username:');
+      
+      if (email) {
+        try {
+          const response = await fetch('/api/forgot-username', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            alert(`Your username is: ${data.username}`);
+          } else {
+            alert(data.message || 'Email not found');
+          }
+        } catch (error) {
+          alert('Could not retrieve username. Please try again.');
+        }
+      }
+    });
+
+    // Forgot Password
+    document.getElementById('forgotPassword').addEventListener('click', async function(e) {
+      e.preventDefault();
+      const username = prompt('Enter your username:');
+      
+      if (username) {
+        const email = prompt('Enter your email address:');
+        
+        if (email) {
+          try {
+            const response = await fetch('/api/forgot-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: username, email: email })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+              const newPassword = prompt('Enter your new password (min. 6 characters):');
+              
+              if (newPassword && newPassword.length >= 6) {
+                const resetResponse = await fetch('/api/reset-password', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    username: username, 
+                    email: email,
+                    new_password: newPassword 
+                  })
+                });
+                
+                const resetData = await resetResponse.json();
+                
+                if (resetResponse.ok) {
+                  alert('Password reset successfully! You can now log in with your new password.');
+                } else {
+                  alert(resetData.message || 'Failed to reset password');
+                }
+              } else {
+                alert('Password must be at least 6 characters');
+              }
+            } else {
+              alert(data.message || 'Username or email not found');
+            }
+          } catch (error) {
+            alert('Could not reset password. Please try again.');
+          }
+        }
+      }
+    });
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      errorMessageElement.style.display = 'none';
+
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      
+      if (!username || !password) {
+        errorMessageElement.textContent = 'Please fill in all fields.';
+        errorMessageElement.style.display = 'block';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Login successful
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            if (rememberMe) {
+                // Store in localStorage (persistent)
+                localStorage.setItem('authToken', data.token);
+            } else {
+                // Store in sessionStorage (cleared when browser closes)
+                sessionStorage.setItem('authToken', data.token);
+            }
+            
+            window.location.replace('/HTML code/home-page.html');
+        } else {
+            errorMessageElement.textContent = data.message;
+            errorMessageElement.style.display = 'block';
+        }
+
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessageElement.textContent = 'Could not connect to the server. Please try again.';
+        errorMessageElement.style.display = 'block';
+      }
+    });
+  </script>
+
+</body>
+</html>

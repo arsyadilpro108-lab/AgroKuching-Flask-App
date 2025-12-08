@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroKuching - File Structure Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .folder-tree {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 30px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+        .folder {
+            color: #4fc3f7;
+        }
+        .file {
+            color: #00ff00;
+        }
+        .comment {
+            color: #888;
+        }
+        .section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .path-example {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .path-example code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 10px 10px 0;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 AgroKuching File Structure</h1>
+        <p class="subtitle">Understanding how files are organized</p>
+
+        <div class="success">
+            <strong>✅ Migration Complete!</strong><br>
+            All files have been organized into proper folders for better maintainability.
+        </div>
+
+        <h2 style="margin: 30px 0 20px 0;">Project Structure</h2>
+        <div class="folder-tree">
+AgroKuching/
+│
+├── <span class="file">app.py</span>                          <span class="comment"># Main entry point - START HERE</span>
+│
+├── <span class="folder">Python code/</span>                    <span class="comment"># Backend code</span>
+│   └── <span class="file">main_app.py</span>                <span class="comment"># Flask app with all routes</span>
+│
+├── <span class="folder">JS code/</span>                        <span class="comment"># Frontend JavaScript</span>
+│   ├── <span class="file">messages.js</span>                <span class="comment"># Real-time chat</span>
+│   ├── <span class="file">home-page.js</span>               <span class="comment"># Home feed</span>
+│   ├── <span class="file">profile.js</span>                 <span class="comment"># User profiles</span>
+│   └── <span class="file">create-post.js</span>             <span class="comment"># Create posts</span>
+│
+├── <span class="folder">HTML code/</span>                      <span class="comment"># Web pages</span>
+│   ├── <span class="file">main-page.html</span>             <span class="comment"># Landing page</span>
+│   ├── <span class="file">log-in.html</span>                <span class="comment"># Login</span>
+│   ├── <span class="file">sign-up.html</span>               <span class="comment"># Registration</span>
+│   ├── <span class="file">home-page.html</span>             <span class="comment"># User feed</span>
+│   ├── <span class="file">messages.html</span>              <span class="comment"># Chat interface</span>
+│   ├── <span class="file">profile.html</span>               <span class="comment"># User profile</span>
+│   └── <span class="file">create-post.html</span>           <span class="comment"># Create post</span>
+│
+├── <span class="folder">CSS code/</span>                       <span class="comment"># Stylesheets</span>
+│   ├── <span class="file">messages.css</span>               <span class="comment"># Chat styles</span>
+│   ├── <span class="file">home-page.css</span>              <span class="comment"># Home styles</span>
+│   └── <span class="file">...</span>
+│
+├── <span class="folder">pictures/</span>                       <span class="comment"># Images</span>
+│   ├── <span class="file">Default PFP.png</span>            <span class="comment"># Default avatar</span>
+│   └── <span class="file">...</span>
+│
+├── <span class="folder">sounds/</span>                         <span class="comment"># Audio files</span>
+│   └── <span class="file">notification.mp3</span>           <span class="comment"># Chat notification</span>
+│
+└── <span class="file">agrokuching.db</span>                   <span class="comment"># SQLite database</span>
+        </div>
+
+        <div class="section">
+            <h3>How to Reference Files</h3>
+            
+            <div class="path-example">
+                <strong>In HTML files:</strong><br>
+                <code>&lt;link rel="stylesheet" href="/CSS code/messages.css"&gt;</code><br>
+                <code>&lt;script src="/JS code/messages.js"&gt;</code><br>
+                <code>&lt;img src="/pictures/Default PFP.png"&gt;</code>
+            </div>
+
+            <div class="path-example">
+                <strong>In JavaScript files:</strong><br>
+                <code>const audio = new Audio('/sounds/notification.mp3');</code><br>
+                <code>window.location.href = '/HTML code/profile.html';</code>
+            </div>
+
+            <div class="path-example">
+                <strong>In Python (main_app.py):</strong><br>
+                <code>send_from_directory(os.path.join(ROOT_DIR, 'JS code'), filename)</code>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>URL Routes</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>URL</th>
+                        <th>File Served</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/</code></td>
+                        <td>HTML code/main-page.html</td>
+                        <td>Landing page</td>
+                    </tr>
+                    <tr>
+                        <td><code>/HTML code/messages.html</code></td>
+                        <td>HTML code/messages.html</td>
+                        <td>Chat interface</td>
+                    </tr>
+                    <tr>
+                        <td><code>/JS code/messages.js</code></td>
+                        <td>JS code/messages.js</td>
+                        <td>Chat functionality</td>
+                    </tr>
+                    <tr>
+                        <td><code>/CSS code/messages.css</code></td>
+                        <td>CSS code/messages.css</td>
+                        <td>Chat styles</td>
+                    </tr>
+                    <tr>
+                        <td><code>/pictures/Default PFP.png</code></td>
+                        <td>pictures/Default PFP.png</td>
+                        <td>Default avatar</td>
+                    </tr>
+                    <tr>
+                        <td><code>/sounds/notification.mp3</code></td>
+                        <td>sounds/notification.mp3</td>
+                        <td>Notification sound</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong><br>
+            Always use absolute paths starting with <code>/</code> in your HTML files.<br>
+            Example: <code>/JS code/messages.js</code> not <code>messages.js</code>
+        </div>
+
+        <div class="section">
+            <h3>Starting the Application</h3>
+            <div class="path-example">
+                <strong>Command:</strong><br>
+                <code>python app.py</code>
+            </div>
+            <div class="path-example">
+                <strong>Or use the batch file:</strong><br>
+                <code>RESTART_SERVER.bat</code>
+            </div>
+            <div class="path-example">
+                <strong>Access at:</strong><br>
+                <code>http://localhost:5000</code>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="/" class="btn">🏠 Go to Home</a>
+            <a href="/HTML code/messages.html" class="btn">💬 Open Chat</a>
+            <a href="/HTML code/test_socketio.html" class="btn">🔧 Test Connection</a>
+        </div>
+
+        <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+            <h3>Quick Reference</h3>
+            <ul style="line-height: 2;">
+                <li><strong>Entry Point:</strong> <code>app.py</code></li>
+                <li><strong>Main App:</strong> <code>Python code/main_app.py</code></li>
+                <li><strong>Database:</strong> <code>agrokuching.db</code> (root folder)</li>
+                <li><strong>Documentation:</strong> <code>FILE_STRUCTURE.md</code></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

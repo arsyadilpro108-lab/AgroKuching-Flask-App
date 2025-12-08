@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Post - AgroKuching</title>
+    <link rel="stylesheet" href="/CSS code/create-post.css" />
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <img src="/pictures/logo.png" alt="Logo" class="brand-logo" />
+            <span class="brand-name">AgroKuching</span>
+        </div>
+        <button class="back-btn" onclick="window.location.href='/HTML code/home-page.html'">← Back</button>
+    </header>
+
+    <main>
+        <div class="create-post-container">
+            <h1>Create a New Post</h1>
+            
+            <form id="postForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="postTitle" required autocomplete="off" placeholder="What are you selling?" />
+                </div>
+
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="text" id="postPrice" required autocomplete="off" placeholder="e.g., $50 or Negotiable" />
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="postDescription" rows="6" required autocomplete="off" placeholder="Describe your product..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Contact Info</label>
+                    <input type="text" id="postContact" required autocomplete="off" placeholder="Phone number or email" />
+                </div>
+
+                <div class="form-group">
+                    <label>Product Images</label>
+                    <input type="file" id="postImages" accept="image/*" multiple />
+                    <div class="preview" id="imagePreview"></div>
+                </div>
+
+                <button type="submit" class="submit-btn">Post</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="/JS code/create-post.js"></script>
+</body>
+</html>

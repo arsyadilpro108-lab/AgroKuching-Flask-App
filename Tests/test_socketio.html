@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocketIO Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #00ff00;
+            padding-left: 10px;
+        }
+        .log-entry.error {
+            border-left-color: #ff0000;
+            color: #ff6b6b;
+        }
+        .log-entry.success {
+            border-left-color: #00ff00;
+            color: #51cf66;
+        }
+        .log-entry.info {
+            border-left-color: #4dabf7;
+            color: #74c0fc;
+        }
+        .status {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .status.connected {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+        .status.disconnected {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔌 SocketIO Connection Test</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="testJoinRoom()">Test Join Room</button>
+        <button onclick="testSendMessage()">Test Send Message</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="log" id="log">
+        <div class="log-entry info">Waiting for connection test...</div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const logDiv = document.getElementById('log');
+        const statusDiv = document.getElementById('status');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '✅ Connected';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '❌ Disconnected';
+            }
+        }
+        
+        function clearLog() {
+            logDiv.innerHTML = '<div class="log-entry info">Log cleared</div>';
+        }
+        
+        // Initialize SocketIO
+        addLog('Initializing SocketIO connection...', 'info');
+        const socket = io({
+            transports: ['polling', 'websocket'],
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5,
+            upgrade: true
+        });
+        
+        socket.on('connect', () => {
+            addLog(`✅ SocketIO connected! Socket ID: ${socket.id}`, 'success');
+            updateStatus(true);
+        });
+        
+        socket.on('disconnect', () => {
+            addLog('❌ SocketIO disconnected', 'error');
+            updateStatus(false);
+        });
+        
+        socket.on('connect_error', (error) => {
+            addLog(`❌ Connection error: ${error.message}`, 'error');
+            updateStatus(false);
+        });
+        
+        socket.on('new_message', (data) => {
+            addLog(`📨 Received new_message event: ${JSON.stringify(data)}`, 'success');
+        });
+        
+        socket.on('user_typing', (data) => {
+            addLog(`⌨️ Received user_typing event: ${JSON.stringify(data)}`, 'info');
+        });
+        
+        socket.on('messages_read', (data) => {
+            addLog(`👁️ Received messages_read event: ${JSON.stringify(data)}`, 'info');
+        });
+        
+        socket.on('user_online', (data) => {
+            addLog(`👤 Received user_online event: ${JSON.stringify(data)}`, 'info');
+        });
+        
+        socket.on('user_offline', (data) => {
+            addLog(`👤 Received user_offline event: ${JSON.stringify(data)}`, 'info');
+        });
+        
+        function testConnection() {
+            addLog('Testing connection...', 'info');
+            if (socket.connected) {
+                addLog('✅ Socket is connected!', 'success');
+                addLog(`Socket ID: ${socket.id}`, 'info');
+                addLog(`Transport: ${socket.io.engine.transport.name}`, 'info');
+            } else {
+                addLog('❌ Socket is NOT connected', 'error');
+            }
+        }
+        
+        function testJoinRoom() {
+            if (!socket.connected) {
+                addLog('❌ Cannot join room - not connected', 'error');
+                return;
+            }
+            
+            const testUserId = 1;
+            addLog(`Emitting 'join' event for user_${testUserId}...`, 'info');
+            socket.emit('join', { user_id: testUserId });
+            addLog('✅ Join event emitted', 'success');
+        }
+        
+        function testSendMessage() {
+            if (!socket.connected) {
+                addLog('❌ Cannot send message - not connected', 'error');
+                return;
+            }
+            
+            addLog('Emitting test typing event...', 'info');
+            socket.emit('typing', {
+                receiver_id: 2,
+                sender_username: 'test_user',
+                is_typing: true
+            });
+            addLog('✅ Typing event emitted', 'success');
+        }
+    </script>
+</body>
+</html>
