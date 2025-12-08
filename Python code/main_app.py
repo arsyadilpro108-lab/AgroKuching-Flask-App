@@ -521,6 +521,16 @@ def get_posts():
     except Exception as e:
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
+@app.route('/api/posts/count', methods=['GET'])
+def get_posts_count():
+    """Lightweight endpoint to check if there are new posts"""
+    try:
+        db = get_db()
+        count = db.execute("SELECT COUNT(*) as count FROM posts").fetchone()['count']
+        return jsonify({'count': count}), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
 @app.route('/api/search', methods=['GET'])
 def search():
     try:
@@ -1190,6 +1200,11 @@ def check_user_online(username):
         return jsonify({'online': is_online}), 200
     except Exception as e:
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+# Serve service worker
+@app.route('/service-worker.js')
+def serve_service_worker():
+    return send_from_directory(ROOT_DIR, 'service-worker.js', mimetype='application/javascript')
 
 # Run Application
 if __name__ == '__main__':

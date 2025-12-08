@@ -111,6 +111,47 @@ function fileToBase64(file) {
     });
 }
 
+/**
+ * Compress image for faster loading on slow connections
+ */
+function compressImage(file, maxWidth = 1200, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // Resize if too large
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convert to base64 with compression
+                canvas.toBlob((blob) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 // --- Settings Page Logic ---
 async function handleSettingsLogic() {
     const usernameInput = document.getElementById("usernameInput");
@@ -778,7 +819,8 @@ async function handleHomePageLogic() {
 
         for (let i = 0; i < files.length; i++) {
             try {
-                const base64 = await fileToBase64(files[i]);
+                // Compress images for faster upload/download
+                const base64 = await compressImage(files[i]);
                 imagesBase64.push(base64);
             } catch (error) {
                 console.error("Error converting image:", error);
@@ -858,7 +900,8 @@ async function handleHomePageLogic() {
             imagesBase64 = [];
             for (let i = 0; i < editImagesInput.files.length; i++) {
                 try {
-                    const base64 = await fileToBase64(editImagesInput.files[i]);
+                    // Compress images for faster upload/download
+                    const base64 = await compressImage(editImagesInput.files[i]);
                     imagesBase64.push(base64);
                 } catch (error) {
                     console.error("Error converting image:", error);
@@ -909,10 +952,40 @@ async function handleHomePageLogic() {
         })
         .catch(e => console.error("Could not load user info:", e));
 
-    // Load All Posts
-    async function loadPosts() {
+    // Show loading skeleton
+    function showLoadingSkeleton() {
+        postContainer.innerHTML = `
+            <div class="skeleton-post">
+                <div class="skeleton-header">
+                    <div class="skeleton-avatar"></div>
+                    <div class="skeleton-name"></div>
+                </div>
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-image"></div>
+            </div>
+        `.repeat(3);
+    }
+
+    // Load All Posts with caching
+    let postsCache = null;
+    let lastFetchTime = 0;
+    const CACHE_DURATION = 30000; // 30 seconds
+    
+    async function loadPosts(forceRefresh = false) {
         try {
+            // Use cache if available and not expired
+            const now = Date.now();
+            if (!forceRefresh && postsCache && (now - lastFetchTime) < CACHE_DURATION) {
+                console.log('Using cached posts');
+                renderPosts(postsCache);
+                return;
+            }
+            
             console.log('Fetching posts from /api/posts...');
+            showLoadingSkeleton();
+            
             const response = await fetch('/api/posts'); 
             console.log('Response status:', response.status);
             if (!response.ok) throw new Error('Failed to fetch posts');
@@ -920,20 +993,46 @@ async function handleHomePageLogic() {
             const postsData = await response.json();
             console.log('Posts loaded:', postsData.length, 'posts');
             
-            postContainer.innerHTML = "";
+            // Update cache
+            postsCache = postsData;
+            lastFetchTime = now;
             
-            if (postsData.length === 0) {
-                postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
-            } else {
-                postsData.forEach(post => {
-                    const postCard = createPostElement(post);
-                    postContainer.appendChild(postCard);
-                });
-            }
+            renderPosts(postsData);
             
         } catch (error) {
             console.error("Failed to load posts:", error);
             postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: red;">Failed to load posts. Please refresh the page.</p>';
+        }
+    }
+    
+    function renderPosts(postsData) {
+        postContainer.innerHTML = "";
+        
+        if (postsData.length === 0) {
+            postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
+        } else {
+            // Render posts in batches for better performance
+            const batchSize = 5;
+            let currentBatch = 0;
+            
+            function renderBatch() {
+                const start = currentBatch * batchSize;
+                const end = Math.min(start + batchSize, postsData.length);
+                
+                for (let i = start; i < end; i++) {
+                    const postCard = createPostElement(postsData[i]);
+                    postContainer.appendChild(postCard);
+                }
+                
+                currentBatch++;
+                
+                if (end < postsData.length) {
+                    // Render next batch after a short delay
+                    setTimeout(renderBatch, 50);
+                }
+            }
+            
+            renderBatch();
         }
     }
     
@@ -957,8 +1056,8 @@ async function handleHomePageLogic() {
                 
                 imagesHTML += `
                     <div class="grid-image-wrapper" data-index="${i}">
-                        <img src="${post.images[i]}" class="grid-image-bg" alt="">
-                        <img src="${post.images[i]}" class="grid-image" alt="${post.title}">
+                        <img src="${post.images[i]}" class="grid-image-bg" alt="" loading="lazy">
+                        <img src="${post.images[i]}" class="grid-image" alt="${post.title}" loading="lazy">
                         ${isLast ? `<div class="grid-image-overlay">+${remaining}</div>` : ''}
                     </div>
                 `;
@@ -1256,33 +1355,45 @@ async function handleHomePageLogic() {
     console.log('Loading posts...');
     loadPosts();
 
-    // Auto-refresh posts every 5 seconds (only when not in search mode)
+    // Smart auto-refresh - only fetch count, not full data
     let lastPostCount = 0;
     setInterval(async () => {
         // Don't auto-refresh if user is searching
         if (isSearchMode) return;
         
         try {
-            const response = await fetch('/api/posts');
+            // Just check if there are new posts (lightweight request)
+            const response = await fetch('/api/posts/count');
             if (response.ok) {
-                const postsData = await response.json();
+                const data = await response.json();
                 
                 // Only reload if there are new posts
-                if (postsData.length !== lastPostCount) {
-                    lastPostCount = postsData.length;
-                    
-                    // Smoothly update posts
-                    postContainer.innerHTML = "";
-                    postsData.forEach(post => {
-                        const postCard = createPostElement(post);
-                        postContainer.appendChild(postCard);
-                    });
+                if (data.count !== lastPostCount && lastPostCount > 0) {
+                    console.log('New posts detected, refreshing...');
+                    lastPostCount = data.count;
+                    loadPosts(true); // Force refresh
+                } else {
+                    lastPostCount = data.count;
                 }
             }
         } catch (error) {
-            console.error("Auto-refresh failed:", error);
+            // Fallback to full refresh if count endpoint doesn't exist
+            try {
+                const response = await fetch('/api/posts');
+                if (response.ok) {
+                    const postsData = await response.json();
+                    if (postsData.length !== lastPostCount && lastPostCount > 0) {
+                        lastPostCount = postsData.length;
+                        loadPosts(true);
+                    } else {
+                        lastPostCount = postsData.length;
+                    }
+                }
+            } catch (err) {
+                console.error("Auto-refresh failed:", err);
+            }
         }
-    }, 5000); // Check every 5 seconds
+    }, 10000); // Check every 10 seconds (reduced frequency)
 }
 
 // --- Main Execution ---

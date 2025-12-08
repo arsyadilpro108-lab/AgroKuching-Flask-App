@@ -1,0 +1,1137 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body {
+    background: linear-gradient(90deg, rgb(192, 222, 180), #8aeac5);
+}
+
+/* --- MAIN HEADER STYLES (for home-page.html) --- */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, #2f9134, #66bb6a);
+    padding: 10px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    position: sticky; 
+    top: 0;
+    z-index: 100;
+    gap: 10px;
+}
+
+/* Profile Dropdown */
+.profile-menu {
+    position: relative;
+    flex-shrink: 0;
+}
+.profile-btn {
+    /* New styles for perfect circle */
+    width: 40px; 
+    height: 40px; 
+    padding: 0; /* Remove padding */
+    display: flex; /* Use flex to center the icon */
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%; /* Make it a perfect circle */
+    /* Existing styles */
+    background:#ccc;
+    border: 1px solid #000; /* Fixed border property */
+    font-size: 20px; /* Adjusted size for better fit */
+    cursor: pointer;
+    color: #fff;
+    transition: background 0.2s;
+    overflow: hidden; /* To contain profile image */
+}
+.profile-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+.dropdown {
+    display: none;
+    position: absolute;
+    top: 50px; /* Adjusted for better spacing */
+    right: 0; /* Align dropdown to the right under the profile button */
+    left: auto;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    overflow: hidden;
+    z-index: 15;
+    min-width: 120px;
+}
+.dropdown a {
+    display: block;
+    padding: 10px 16px;
+    text-decoration: none;
+    color: #333;
+}
+.dropdown a:hover {
+    background: #f1f3f5;
+}
+
+.dropdown a.delete-account-link {
+    color: #dc3545;
+    border-top: 1px solid #e0e0e0;
+}
+
+.dropdown a.delete-account-link:hover {
+    background: #fee;
+}
+
+.dropdown.show {
+    display: block;
+}
+
+/* Brand */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.brand-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    display: block;
+}
+.brand-name {
+    font-size: 24px;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Search Bar */
+.search-container {
+    flex: 1;
+    max-width: 1000px;
+    display: flex;
+    align-items: center;
+    background: #f1f3f5;
+    border-radius: 20px;
+    padding: 6px 12px;
+    margin-left: 15px;
+}
+.search-container input {
+    border: none;
+    background: transparent;
+    outline: none;
+    flex: 1;
+    padding: 6px;
+    font-size: 14px;
+}
+
+/* Post Button */
+.post-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+.post-btn:hover {
+    background: #0056b3;
+}
+
+/* Messages Button */
+.messages-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+    font-size: 14px;
+}
+.messages-btn:hover {
+    background: #218838;
+}
+
+/* Posts Grid - One post per row */
+main {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: calc(100vh - 70px);
+}
+
+#postContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Post Card - Full width */
+.post-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    padding: 16px;
+    transition: box-shadow 0.2s ease;
+    width: 100%;
+}
+.post-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Poster Info */
+.poster-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 15px;
+}
+.poster-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid #000;
+}
+.poster-name {
+    font-weight: 600;
+    cursor: pointer;
+    color: #333;
+}
+
+
+
+/* Post Content */
+.post-content {
+    margin-bottom: 10px;
+}
+
+.post-content h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #333;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+.post-content p {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 6px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Post Images */
+.post-images {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.post-images img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.post-images img:hover {
+    transform: scale(1.05);
+}
+/* Style for the main post image */
+.post-main-image {
+    width: 100%;
+    height: 200px; /* Or any fixed height you prefer */
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+/* Container for thumbnails */
+.post-thumbnails {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.post-thumbnail {
+    width: 60px; /* Smaller than main image */
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    border: 1px solid #ddd;
+}
+.post-thumbnail:hover {
+    transform: scale(1.05);
+}
+
+
+/* Modal (General styles retained for Post, Logout, Image, MiniProfile) */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+}
+.modal-content {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+}
+.modal-content h2 {
+    margin-bottom: 15px;
+}
+.modal-content label {
+    display: block;
+    font-weight: 600;
+    margin-top: 10px;
+    margin-bottom: 4px;
+}
+.modal-content input,
+.modal-content textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.preview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+.preview img {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 22px;
+    cursor: pointer;
+    color: #666;
+}
+.close:hover {
+    color: #000;
+}
+.submit-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 15px;
+    width: 100%;
+
+}
+.submit-btn-red {
+    background: red;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 15px;
+    width: 100%;
+}
+
+.submit-btn-red:hover {
+  background: rgb(206, 5, 5);
+}
+
+
+.submit-btn:hover {
+    background: #0056b3;
+}
+
+/* Image Popup */
+#imagePopup {
+    background: rgba(0,0,0,0.7); /* Darker backdrop for popup */
+}
+#imagePopup img {
+    max-width: 90vw; /* Use viewport width */
+    max-height: 90vh; /* Use viewport height */
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+}
+
+/* Mini Profile */
+#miniProfile .modal-content {
+    max-width: 300px;
+    text-align: center;
+}
+.mini-pic {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 10px;
+    border: 3px solid #2f9134;
+}
+.mini-username {
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 1.3em;
+}
+.mini-desc,
+.mini-reg,
+.mini-email,
+.mini-phone {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+/* 
+Image Gallery Modal */
+#imageGallery {
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.gallery-content {
+    position: relative;
+    width: 90vw;
+    height: 90vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#galleryImage {
+    max-width: 85%;
+    max-height: 85%;
+    object-fit: contain;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+    cursor: zoom-in;
+}
+
+#galleryImage.zoomed {
+    max-width: none;
+    max-height: none;
+    cursor: grab;
+}
+
+#galleryImage.zoomed:active {
+    cursor: grabbing;
+}
+
+.gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    border: none;
+    font-size: 30px;
+    padding: 15px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background 0.3s;
+    z-index: 10;
+}
+
+.gallery-nav:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.gallery-nav.prev {
+    left: 20px;
+}
+
+.gallery-nav.next {
+    right: 20px;
+}
+
+.gallery-counter {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+#closeGallery {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 40px;
+    color: white;
+    cursor: pointer;
+    z-index: 11;
+}
+
+#closeGallery:hover {
+    color: #ccc;
+}
+
+/* Post Images Grid (WhatsApp style with blur effect) */
+.post-images-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+/* 1 image - full width */
+.post-images-grid.grid-1 {
+    grid-template-columns: 1fr;
+}
+
+.post-images-grid.grid-1 .grid-image-wrapper {
+    height: 400px;
+}
+
+/* 2 images - side by side */
+.post-images-grid.grid-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+.post-images-grid.grid-2 .grid-image-wrapper {
+    height: 300px;
+}
+
+/* 3 images - 1 large on left, 2 stacked on right */
+.post-images-grid.grid-3 {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.post-images-grid.grid-3 .grid-image-wrapper:first-child {
+    grid-row: 1 / 3;
+    height: 100%;
+}
+
+.post-images-grid.grid-3 .grid-image-wrapper {
+    height: 250px;
+}
+
+/* 4+ images - 2x2 grid */
+.post-images-grid.grid-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.post-images-grid.grid-4 .grid-image-wrapper {
+    height: 250px;
+}
+
+/* Image wrapper with blur background */
+.grid-image-wrapper {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    cursor: pointer;
+    background: #f0f0f0;
+}
+
+/* Blurred background image */
+.grid-image-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(20px);
+    transform: scale(1.1);
+}
+
+/* Main image on top */
+.grid-image {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 1;
+    transition: transform 0.2s;
+}
+
+.grid-image-wrapper:hover .grid-image {
+    transform: scale(1.02);
+}
+
+/* Overlay for "+X more" */
+.grid-image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 48px;
+    font-weight: 600;
+    z-index: 2;
+    border-radius: 16px;
+}
+
+
+/* Post Menu (Three Dots) */
+.post-menu-container {
+    margin-left: auto;
+    position: relative;
+}
+
+.post-menu-btn {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px 10px;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.post-menu-btn:hover {
+    color: #000;
+}
+
+.post-menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 30px;
+    right: 0;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    overflow: hidden;
+    z-index: 10;
+    min-width: 120px;
+}
+
+.post-menu-dropdown.show {
+    display: block;
+}
+
+.post-menu-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: white;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.post-menu-dropdown button:hover {
+    background: #f1f3f5;
+}
+
+.post-menu-dropdown button.delete-option {
+    color: #dc3545;
+}
+
+.post-menu-dropdown button.delete-option:hover {
+    background: #fee;
+}
+
+.poster-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 8px;
+}
+
+
+/* Search Results */
+.search-section {
+    width: 100%;
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2f9134;
+}
+
+/* User Card in Search Results */
+.user-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s;
+}
+
+.user-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.user-card-pic {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #000;
+}
+
+.user-card-info {
+    flex: 1;
+}
+
+.user-card-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.user-card-desc {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.user-card-joined {
+    font-size: 12px;
+    color: #999;
+}
+
+.view-profile-btn {
+    background: #2f9134;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.view-profile-btn:hover {
+    background: #267028;
+}
+
+/* No Results */
+.no-results {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.no-results h2 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.no-results p {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.clear-search-btn {
+    background: #2f9134;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.clear-search-btn:hover {
+    background: #267028;
+}
+
+
+/* Search Clear Button and Dropdown */
+.clear-search-icon {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 0 8px;
+    transition: color 0.2s;
+}
+
+.clear-search-icon:hover {
+    color: #000;
+}
+
+.search-dropdown {
+    display: none;
+    position: absolute;
+    top: 45px;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.search-dropdown.show {
+    display: block;
+}
+
+.search-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.search-dropdown-item:hover {
+    background: #f8f9fa;
+}
+
+.search-dropdown-item img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.search-dropdown-item-info {
+    flex: 1;
+}
+
+.search-dropdown-item-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.search-dropdown-item-desc {
+    font-size: 12px;
+    color: #666;
+}
+
+.search-container {
+    position: relative;
+}
+
+
+/* DM User Button */
+.dm-user-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 10px;
+    transition: background 0.2s;
+    width: 100%;
+}
+
+.dm-user-btn:hover {
+    background: #0056b3;
+}
+
+/* Messages Button with Badge */
+.messages-btn {
+    background: #2f9134;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.messages-btn:hover {
+    background: #267028;
+}
+
+.message-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Gallery Image Touch Improvements */
+#imageGallery img {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+#galleryImage {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    cursor: grab;
+}
+
+#galleryImage.zoomed {
+    cursor: zoom-out;
+}
+
+/* Facebook-style Create Post Box */
+.create-post-box {
+    background: white;
+    border-radius: 50px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 12px 20px;
+    margin: 20px auto;
+    max-width: 680px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+}
+
+.create-post-box:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.create-post-plus-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 600;
+    flex-shrink: 0;
+    line-height: 1;
+    padding-bottom: 2px;
+}
+
+.create-post-input {
+    flex: 1;
+    color: #65676b;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    body {
+        padding-top: 0;
+    }
+    
+    header {
+        padding: 10px 15px;
+        flex-wrap: wrap;
+        gap: 10px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+    }
+    
+    main {
+        margin-top: 120px;
+    }
+    
+    .brand {
+        order: 1;
+    }
+    
+    .brand-logo {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .brand-name {
+        font-size: 18px;
+    }
+    
+    .search-container {
+        order: 3;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .search-container input {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    
+    .messages-btn,
+    .profile-btn {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    
+    .profile-btn {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .create-post-box {
+        margin: 12px;
+        padding: 15px;
+    }
+    
+    .create-post-input {
+        font-size: 15px;
+        padding: 12px;
+    }
+    
+    .create-post-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .create-post-actions button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    .posts-container {
+        padding: 0 12px;
+    }
+    
+    .post-card {
+        margin: 12px 0;
+        padding: 15px;
+    }
+    
+    .poster-info {
+        gap: 16px;
+    }
+    
+    .poster-pic {
+        width: 38px;
+        height: 38px;
+    }
+    
+    .poster-name {
+        font-size: 15px;
+    }
+    
+    .post-content h3 {
+        font-size: 18px;
+    }
+    
+    .post-content p {
+        font-size: 14px;
+    }
+    
+    .grid-image {
+        border-radius: 8px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-width: 95%;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    
+    .search-results-modal .modal-content {
+        max-height: 80vh;
+    }
+    
+    .user-card {
+        padding: 12px;
+    }
+    
+    .user-card-pic {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+@media (max-width: 480px) {
+    header {
+        padding: 8px 12px;
+    }
+    
+    .brand-name {
+        font-size: 16px;
+    }
+    
+    .create-post-box {
+        margin: 10px;
+        padding: 12px;
+    }
+    
+    .post-card {
+        padding: 12px;
+    }
+    
+    .post-content h3 {
+        font-size: 16px;
+    }
+    
+    .post-content p {
+        font-size: 13px;
+    }
+}

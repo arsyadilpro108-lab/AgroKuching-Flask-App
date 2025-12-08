@@ -7,6 +7,9 @@ eventlet.monkey_patch()
 
 import sys
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
