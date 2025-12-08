@@ -1,0 +1,1 @@
+web: eventlet --exec gunicorn app:app -w 1 --preload
