@@ -2,6 +2,8 @@
 AgroKuching - Main Application Entry Point
 This file imports and runs the main Flask application from the Python code folder.
 """
+import eventlet
+eventlet.monkey_patch()
 
 import sys
 import os
