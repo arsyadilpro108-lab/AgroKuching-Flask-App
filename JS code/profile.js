@@ -669,15 +669,25 @@ const profileDropdown = document.getElementById('profileDropdown');
 // Load header profile pic
 fetchWithAuth('/api/profile')
     .then(data => {
-        if (data.profile_pic) {
+        if (data.profile_picture && data.profile_picture !== 'null' && data.profile_picture !== '') {
             profileBtn.innerHTML = '';
             const img = document.createElement('img');
-            img.src = data.profile_pic;
+            img.src = data.profile_picture;
             img.style = "width: 100%; height: 100%; object-fit: cover;";
+            img.onerror = function() {
+                // If image fails to load, show default icon
+                profileBtn.innerHTML = '👤';
+            };
             profileBtn.appendChild(img);
+        } else {
+            // Show default icon if no profile picture
+            profileBtn.innerHTML = '👤';
         }
     })
-    .catch(e => console.error("Could not load header pic:", e));
+    .catch(e => {
+        console.error("Could not load header pic:", e);
+        profileBtn.innerHTML = '👤';
+    });
 
 profileBtn.addEventListener("click", (e) => {
     e.stopPropagation();
