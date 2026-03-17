@@ -34,135 +34,47 @@ print(f"HTML code exists: {os.path.exists(os.path.join(ROOT_DIR, 'HTML code'))}"
 print(f"JS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'JS code'))}")
 print(f"CSS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'CSS code'))}")
 
-# Initialize SocketIO for live messaging — threading works with both SQLite and pg8000
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=False, engineio_logger=False)
+# Use eventlet on Render (Postgres), threading locally (SQLite)
+_async_mode = 'eventlet' if USE_POSTGRES else 'threading'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logger=False, engineio_logger=False)
 
 # --- Database Setup ---
 
 if USE_POSTGRES:
-    import pg8000.native
-    from urllib.parse import urlparse
-
-    _pg_url = urlparse(DATABASE_URL)
+    import psycopg2
+    import psycopg2.extras
 
     class PgWrapper:
-        """Wraps a pg8000 connection to accept ? placeholders like SQLite and return dict rows."""
+        """Wraps a psycopg2 connection to accept ? placeholders like SQLite."""
         def __init__(self, conn):
             self._conn = conn
 
-        def _row_to_dict(self, cursor, row):
-            if row is None:
-                return None
-            cols = [d['name'] for d in cursor.columns]
-            return dict(zip(cols, row))
-
         def execute(self, sql, params=None):
-            return _PgCursor(self._conn, sql, params)
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql.replace('?', '%s'), params)
+            return cur
 
         def cursor(self):
-            return _PgRawCursor(self._conn)
+            return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         def commit(self):
-            self._conn.run("COMMIT")
+            self._conn.commit()
 
         def rollback(self):
-            self._conn.run("ROLLBACK")
+            self._conn.rollback()
 
         def close(self):
             self._conn.close()
 
         @property
         def closed(self):
-            try:
-                self._conn.run("SELECT 1")
-                return False
-            except Exception:
-                return True
-
-    class _PgCursor:
-        """Executes a query and provides fetchone/fetchall returning dicts."""
-        def __init__(self, conn, sql, params):
-            sql_pg = sql.replace('?', '%s')
-            # pg8000 uses $1,$2 style — convert %s to $n
-            i = [0]
-            def replacer(m):
-                i[0] += 1
-                return f'${i[0]}'
-            import re
-            sql_pg = re.sub(r'%s', replacer, sql_pg)
-            if params:
-                self._rows = conn.run(sql_pg, *params)
-            else:
-                self._rows = conn.run(sql_pg)
-            self._columns = [d['name'] for d in conn.columns]
-            self._idx = 0
-            self.lastrowid = None
-
-        def fetchone(self):
-            if self._idx < len(self._rows):
-                row = self._rows[self._idx]
-                self._idx += 1
-                return dict(zip(self._columns, row))
-            return None
-
-        def fetchall(self):
-            rows = self._rows[self._idx:]
-            self._idx = len(self._rows)
-            return [dict(zip(self._columns, r)) for r in rows]
-
-        def __iter__(self):
-            return iter(self.fetchall())
-
-    class _PgRawCursor:
-        """Raw cursor for DDL/multi-statement use."""
-        def __init__(self, conn):
-            self._conn = conn
-            self._rows = []
-            self._columns = []
-            self._idx = 0
-
-        def execute(self, sql, params=None):
-            import re
-            sql_pg = sql.replace('?', '%s')
-            i = [0]
-            def replacer(m):
-                i[0] += 1
-                return f'${i[0]}'
-            sql_pg = re.sub(r'%s', replacer, sql_pg)
-            if params:
-                self._rows = self._conn.run(sql_pg, *params)
-            else:
-                self._rows = self._conn.run(sql_pg)
-            self._columns = [d['name'] for d in self._conn.columns]
-            self._idx = 0
-
-        def fetchone(self):
-            if self._idx < len(self._rows):
-                row = self._rows[self._idx]
-                self._idx += 1
-                return dict(zip(self._columns, row))
-            return None
-
-        def fetchall(self):
-            rows = self._rows[self._idx:]
-            self._idx = len(self._rows)
-            return [dict(zip(self._columns, r)) for r in rows]
+            return self._conn.closed
 
     def get_db():
         db = getattr(g, '_database', None)
-        if db is None:
-            import ssl
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            conn = pg8000.native.Connection(
-                user=_pg_url.username,
-                password=_pg_url.password,
-                host=_pg_url.hostname,
-                port=_pg_url.port or 5432,
-                database=_pg_url.path.lstrip('/'),
-                ssl_context=ssl_ctx
-            )
+        if db is None or db.closed:
+            conn = psycopg2.connect(DATABASE_URL)
+            conn.autocommit = False
             db = g._database = PgWrapper(conn)
         return db
 
@@ -176,8 +88,8 @@ if USE_POSTGRES:
                 pass
 
     def last_id(cursor):
-        # pg8000 native returns lastval via the connection after INSERT ... RETURNING
-        return None  # handled inline with RETURNING id
+        cursor.execute("SELECT lastval()")
+        return cursor.fetchone()['lastval']
 
 else:
     def get_db():
