@@ -2,6 +2,14 @@
 const API_BASE_URL = ''; // The server is on the same origin
 const TOKEN_KEY = 'authToken';
 
+// Global variables for search and posts
+let isSearchMode = false;
+let searchQuery = '';
+let searchTimeout;
+let currentUserRole = 'user';
+let currentUserData = null;
+let currentUsername = null;
+
 // Helper to get token from either localStorage or sessionStorage
 function getToken() {
     return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
@@ -107,47 +115,6 @@ function fileToBase64(file) {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-    });
-}
-
-/**
- * Compress image for faster loading on slow connections
- */
-function compressImage(file, maxWidth = 1200, quality = 0.8) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                
-                // Resize if too large
-                if (width > maxWidth) {
-                    height = (height * maxWidth) / width;
-                    width = maxWidth;
-                }
-                
-                canvas.width = width;
-                canvas.height = height;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // Convert to base64 with compression
-                canvas.toBlob((blob) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                }, 'image/jpeg', quality);
-            };
-            img.onerror = reject;
-            img.src = e.target.result;
-        };
-        reader.onerror = reject;
         reader.readAsDataURL(file);
     });
 }
@@ -352,29 +319,41 @@ async function handleHomePageLogic() {
     let currentGalleryImages = [];
     let currentGalleryIndex = 0;
 
-    // Load Header Profile Pic and check for developer role
+    // Load Header Profile Pic
     fetchWithAuth('/api/profile')
         .then(data => {
+            if (!profileBtn) return;
             if (data.profile_picture && data.profile_picture !== 'null' && data.profile_picture !== '') {
                 profileBtn.innerHTML = '';
                 const img = document.createElement('img');
                 img.src = data.profile_picture;
                 img.style = "width: 100%; height: 100%; object-fit: cover;";
-                img.onerror = function() {
-                    // If image fails to load, show default icon
-                    profileBtn.innerHTML = '👤';
-                };
+                img.onerror = function() { profileBtn.innerHTML = '👤'; };
                 profileBtn.appendChild(img);
             } else {
-                // Show default icon if no profile picture
                 profileBtn.innerHTML = '👤';
             }
-            
-            })
-        .catch(e => {
-            console.error("Could not load header pic:", e);
-            profileBtn.innerHTML = '👤';
-        });
+        })
+        .catch(() => { if (profileBtn) profileBtn.innerHTML = '👤'; });
+
+    // Check admin role independently — runs regardless of profile fetch result
+    const token = getToken();
+    if (token) {
+        fetch('/api/admin/check', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(r => r.json())
+        .then(adminData => {
+            if (adminData && adminData.is_admin) {
+                const adminLink = document.getElementById('adminLink');
+                if (adminLink) {
+                    adminLink.style.display = 'block';
+                    console.log('✅ Admin link shown on home page');
+                }
+            }
+        })
+        .catch(() => {});
+    }
 
     // Modal/Dropdown Listeners
     // Facebook-style create post box
@@ -385,22 +364,24 @@ async function handleHomePageLogic() {
             window.location.href = '/HTML code/create-post.html';
         });
     }
-    closeModalBtn.addEventListener("click", () => closeModal(postModal));
-    closeEditModalBtn.addEventListener("click", () => closeModal(editModal));
+    if (closeModalBtn) closeModalBtn.addEventListener("click", () => closeModal(postModal));
+    if (closeEditModalBtn) closeEditModalBtn.addEventListener("click", () => closeModal(editModal));
     
-    profileBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        profileDropdown.classList.toggle("show");
-    });
+    if (profileBtn && profileDropdown) {
+        profileBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle("show");
+        });
+    }
     
     window.addEventListener("click", (e) => {
-        if (!e.target.closest('.profile-menu')) {
+        if (profileDropdown && !e.target.closest('.profile-menu')) {
             profileDropdown.classList.remove("show");
         }
-        if (e.target === postModal) closeModal(postModal);
-        if (e.target === editModal) closeModal(editModal);
-        if (e.target === logoutModal) closeModal(logoutModal);
-        if (e.target === imageGallery) closeModal(imageGallery);
+        if (postModal && e.target === postModal) closeModal(postModal);
+        if (editModal && e.target === editModal) closeModal(editModal);
+        if (logoutModal && e.target === logoutModal) closeModal(logoutModal);
+        if (imageGallery && e.target === imageGallery) closeModal(imageGallery);
         
         // Close post menus when clicking outside
         document.querySelectorAll('.post-menu-dropdown.show').forEach(menu => {
@@ -408,13 +389,13 @@ async function handleHomePageLogic() {
         });
         
         // Close search dropdown when clicking outside
-        if (!e.target.closest('.search-container')) {
+        if (searchDropdown && !e.target.closest('.search-container')) {
             searchDropdown.classList.remove('show');
         }
     });
 
     // Gallery controls
-    closeGallery.addEventListener("click", () => closeModal(imageGallery));
+    if (closeGallery) closeGallery.addEventListener("click", () => closeModal(imageGallery));
     
     // Facebook-style Gallery zoom functionality
     let zoomLevel = 1;
@@ -755,16 +736,20 @@ async function handleHomePageLogic() {
     });
     
     // Logout Logic
-    logoutLink.addEventListener("click", (e) => {
-        e.preventDefault();
-        openModal(logoutModal);
-        profileDropdown.classList.remove("show");
-    });
-    cancelLogout.addEventListener("click", () => closeModal(logoutModal));
-    confirmLogout.addEventListener("click", () => {
-        removeToken();
-        window.location.href = '/HTML code/main-page.html';
-    });
+    if (logoutLink && logoutModal) {
+        logoutLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            openModal(logoutModal);
+            profileDropdown.classList.remove("show");
+        });
+    }
+    if (cancelLogout) cancelLogout.addEventListener("click", () => closeModal(logoutModal));
+    if (confirmLogout) {
+        confirmLogout.addEventListener("click", () => {
+            removeToken();
+            window.location.href = '/HTML code/main-page.html';
+        });
+    }
 
     // Delete Account
     const deleteAccountLink = document.getElementById("deleteAccountLink");
@@ -797,30 +782,32 @@ async function handleHomePageLogic() {
     }
     
     // New Post Image Preview
-    postImagesInput.addEventListener("change", () => {
-        imagePreview.innerHTML = "";
-        Array.from(postImagesInput.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = document.createElement("img");
-                img.src = e.target.result;
-                imagePreview.appendChild(img);
-            };
-            reader.readAsDataURL(file);
+    if (postImagesInput && imagePreview) {
+        postImagesInput.addEventListener("change", () => {
+            imagePreview.innerHTML = "";
+            Array.from(postImagesInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    imagePreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
         });
-    });
+    }
 
     // Create New Post
-    postForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    if (postForm) {
+        postForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
         
         const imagesBase64 = [];
         const files = postImagesInput.files;
 
         for (let i = 0; i < files.length; i++) {
             try {
-                // Compress images for faster upload/download
-                const base64 = await compressImage(files[i]);
+                const base64 = await fileToBase64(files[i]);
                 imagesBase64.push(base64);
             } catch (error) {
                 console.error("Error converting image:", error);
@@ -849,7 +836,8 @@ async function handleHomePageLogic() {
             console.error("Failed to create post:", error);
             alert(`Error: ${error.message}`);
         }
-    });
+        });
+    }
 
     // Edit Post Modal
     const editImagesInput = document.getElementById("editImages");
@@ -900,8 +888,7 @@ async function handleHomePageLogic() {
             imagesBase64 = [];
             for (let i = 0; i < editImagesInput.files.length; i++) {
                 try {
-                    // Compress images for faster upload/download
-                    const base64 = await compressImage(editImagesInput.files[i]);
+                    const base64 = await fileToBase64(editImagesInput.files[i]);
                     imagesBase64.push(base64);
                 } catch (error) {
                     console.error("Error converting image:", error);
@@ -934,7 +921,6 @@ async function handleHomePageLogic() {
     });
 
     // Get current user info
-    let currentUsername = null;
     console.log('Fetching current user profile...');
     fetchWithAuth('/api/profile')
         .then(data => {
@@ -952,96 +938,56 @@ async function handleHomePageLogic() {
         })
         .catch(e => console.error("Could not load user info:", e));
 
-    // Show loading skeleton
-    function showLoadingSkeleton() {
-        postContainer.innerHTML = `
-            <div class="skeleton-post">
-                <div class="skeleton-header">
-                    <div class="skeleton-avatar"></div>
-                    <div class="skeleton-name"></div>
-                </div>
-                <div class="skeleton-title"></div>
-                <div class="skeleton-text"></div>
-                <div class="skeleton-text"></div>
-                <div class="skeleton-image"></div>
-            </div>
-        `.repeat(3);
-    }
+    // Load All Posts
 
-    // Load All Posts with caching
-    let postsCache = null;
-    let lastFetchTime = 0;
-    const CACHE_DURATION = 30000; // 30 seconds
-    
-    async function loadPosts(forceRefresh = false) {
+    async function loadPosts() {
+        console.log('🔄 Starting loadPosts function...');
+        
         try {
-            // Use cache if available and not expired
-            const now = Date.now();
-            if (!forceRefresh && postsCache && (now - lastFetchTime) < CACHE_DURATION) {
-                console.log('Using cached posts');
-                renderPosts(postsCache);
-                return;
+            const response = await fetch('/api/posts?t=' + Date.now());
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
-            console.log('Fetching posts from /api/posts...');
-            showLoadingSkeleton();
-            
-            const response = await fetch('/api/posts'); 
-            console.log('Response status:', response.status);
-            if (!response.ok) throw new Error('Failed to fetch posts');
             
             const postsData = await response.json();
-            console.log('Posts loaded:', postsData.length, 'posts');
+            console.log('✅ Successfully loaded', postsData.length, 'posts');
             
-            // Update cache
-            postsCache = postsData;
-            lastFetchTime = now;
+            // Clear container and render posts
+            postContainer.innerHTML = "";
             
-            renderPosts(postsData);
-            
-        } catch (error) {
-            console.error("Failed to load posts:", error);
-            postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: red;">Failed to load posts. Please refresh the page.</p>';
-        }
-    }
-    
-    function renderPosts(postsData) {
-        postContainer.innerHTML = "";
-        
-        if (postsData.length === 0) {
-            postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
-        } else {
-            // Render posts in batches for better performance
-            const batchSize = 5;
-            let currentBatch = 0;
-            
-            function renderBatch() {
-                const start = currentBatch * batchSize;
-                const end = Math.min(start + batchSize, postsData.length);
-                
-                for (let i = start; i < end; i++) {
-                    const postCard = createPostElement(postsData[i]);
+            if (postsData.length === 0) {
+                postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
+            } else {
+                console.log('🎨 Rendering posts...');
+                postsData.forEach((post, index) => {
+                    console.log(`Rendering post ${index + 1}: ${post.title}`);
+                    const postCard = createPostElement(post);
                     postContainer.appendChild(postCard);
-                }
-                
-                currentBatch++;
-                
-                if (end < postsData.length) {
-                    // Render next batch after a short delay
-                    setTimeout(renderBatch, 50);
-                }
+                });
+                console.log('✅ All posts rendered successfully');
             }
             
-            renderBatch();
+        } catch (error) {
+            console.error('❌ Failed to load posts:', error);
+            postContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <p style="color: red; margin-bottom: 10px;">Failed to load posts</p>
+                    <p style="color: #666; font-size: 14px;">Error: ${error.message}</p>
+                    <button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh Page</button>
+                </div>
+            `;
         }
     }
     
     // Render a Single Post Card
     function createPostElement(post) {
+        console.log('🎨 Creating post element for:', post.title);
+        
         const postCard = document.createElement("div");
         postCard.className = "post-card";
 
-        // Create WhatsApp-style image grid with blur effect
+        // Create simple image display
         let imagesHTML = '';
         if (post.images && post.images.length > 0) {
             const imageCount = post.images.length;
@@ -1056,8 +1002,8 @@ async function handleHomePageLogic() {
                 
                 imagesHTML += `
                     <div class="grid-image-wrapper" data-index="${i}">
-                        <img src="${post.images[i]}" class="grid-image-bg" alt="" loading="lazy">
-                        <img src="${post.images[i]}" class="grid-image" alt="${post.title}" loading="lazy">
+                        <img src="${post.images[i]}" class="grid-image-bg" alt="">
+                        <img src="${post.images[i]}" class="grid-image" alt="${post.title}">
                         ${isLast ? `<div class="grid-image-overlay">+${remaining}</div>` : ''}
                     </div>
                 `;
@@ -1068,7 +1014,7 @@ async function handleHomePageLogic() {
         
         const postDate = new Date(post.post_date).toLocaleString();
 
-        // Check if current user is the post author
+        // Simple menu for now - just show for post authors
         const isAuthor = currentUsername && currentUsername === post.author_username;
         const menuHTML = isAuthor ? `
             <div class="post-menu-container">
@@ -1082,8 +1028,6 @@ async function handleHomePageLogic() {
 
         // DM button (only show if not own post)
         const dmButton = isAuthor ? '' : `<button class="dm-user-btn" data-username="${post.author_username}">💬 DM User</button>`;
-
-        
         
         postCard.innerHTML = `
             <div class="poster-info">
@@ -1102,123 +1046,169 @@ async function handleHomePageLogic() {
             <p style="font-size: 0.8em; color: #777; margin-top: 10px;">Posted: ${postDate}</p>
         `;
         
-        // Add click listeners to view profile
-        postCard.querySelector('.poster-name').addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.location.href = `/HTML code/profile.html?user=${e.target.dataset.username}`;
-        });
-        
-        // Profile picture with context menu for DM
-        const posterPic = postCard.querySelector('.poster-pic');
-        posterPic.style.cursor = 'pointer';
-        posterPic.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const username = postCard.querySelector('.poster-name').dataset.username;
-            window.location.href = `/HTML code/profile.html?user=${username}`;
-        });
-
-        // DM button listener
-        const dmBtn = postCard.querySelector('.dm-user-btn');
-        if (dmBtn) {
-            dmBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const username = dmBtn.dataset.username;
-                window.location.href = `/HTML code/messages.html?user=${username}`;
-            });
-        }
-
-        // Add click listeners for image gallery
-        const imageWrappers = postCard.querySelectorAll('.grid-image-wrapper');
-        imageWrappers.forEach((wrapper) => {
-            wrapper.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = parseInt(wrapper.getAttribute('data-index'));
-                openGallery(post.images, index);
-            });
-        });
-
-        // Add three-dot menu listeners
-        const menuBtn = postCard.querySelector('.post-menu-btn');
-        const menuDropdown = postCard.querySelector('.post-menu-dropdown');
-        
-        if (menuBtn && menuDropdown) {
-            menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Close all other menus
-                document.querySelectorAll('.post-menu-dropdown.show').forEach(menu => {
-                    if (menu !== menuDropdown) menu.classList.remove('show');
-                });
-                menuDropdown.classList.toggle('show');
-            });
-
-            // Edit button
-            const editBtn = menuDropdown.querySelector('.edit-option');
-            if (editBtn) {
-                editBtn.addEventListener('click', (e) => {
+        // Add basic event listeners
+        try {
+            // Profile click
+            const posterName = postCard.querySelector('.poster-name');
+            if (posterName) {
+                posterName.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    menuDropdown.classList.remove('show');
-                    openEditModal(post);
+                    window.location.href = `/HTML code/profile.html?user=${e.target.dataset.username}`;
                 });
             }
-
-            // Delete button
-            const deleteBtn = menuDropdown.querySelector('.delete-option');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', async (e) => {
+            
+            // DM button
+            const dmBtn = postCard.querySelector('.dm-user-btn');
+            if (dmBtn) {
+                dmBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    menuDropdown.classList.remove('show');
-                    if (confirm('Are you sure you want to delete this post?')) {
-                        try {
-                            await fetchWithAuth(`/api/posts/${post.id}`, {
-                                method: 'DELETE'
-                            });
-                            postCard.remove();
-                        } catch (error) {
-                            console.error('Failed to delete post:', error);
-                            alert('Failed to delete post: ' + error.message);
+                    const username = dmBtn.dataset.username;
+                    window.location.href = `/HTML code/messages.html?user=${username}`;
+                });
+            }
+            
+            // Simple menu functionality
+            const menuBtn = postCard.querySelector('.post-menu-btn');
+            const menuDropdown = postCard.querySelector('.post-menu-dropdown');
+            
+            if (menuBtn && menuDropdown) {
+                menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.post-menu-dropdown.show').forEach(menu => {
+                        if (menu !== menuDropdown) menu.classList.remove('show');
+                    });
+                    menuDropdown.classList.toggle('show');
+                });
+
+                // Edit button
+                const editBtn = menuDropdown.querySelector('.edit-option');
+                if (editBtn) {
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        menuDropdown.classList.remove('show');
+                        openEditModal(post);
+                    });
+                }
+
+                // Delete button
+                const deleteBtn = menuDropdown.querySelector('.delete-option');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        menuDropdown.classList.remove('show');
+                        if (confirm('Are you sure you want to delete this post?')) {
+                            try {
+                                await fetchWithAuth(`/api/posts/${post.id}`, {
+                                    method: 'DELETE'
+                                });
+                                postCard.remove();
+                            } catch (error) {
+                                console.error('Failed to delete post:', error);
+                                alert('Failed to delete post: ' + error.message);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
+            
+        } catch (error) {
+            console.error('Error adding event listeners to post:', error);
         }
 
+        console.log('✅ Post element created successfully');
         return postCard;
     }
     
-    // Search - live dropdown and Enter key
-    let isSearchMode = false;
-    let searchQuery = '';
-    let searchTimeout;
+    // Search functionality setup
 
     // Live search dropdown
-    searchInput.addEventListener('input', () => {
-        const query = searchInput.value.trim();
-        
-        if (query) {
-            clearSearch.style.display = 'block';
+    if (searchInput && searchDropdown && clearSearch) {
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.trim();
             
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                performLiveSearch(query);
-            }, 300);
-        } else {
-            clearSearch.style.display = 'none';
-            searchDropdown.classList.remove('show');
-        }
-    });
+            if (query) {
+                clearSearch.style.display = 'block';
+                
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    performLiveSearch(query);
+                }, 300);
+            } else {
+                clearSearch.style.display = 'none';
+                searchDropdown.classList.remove('show');
+            }
+        });
+    }
 
     // Clear search button
-    clearSearch.addEventListener('click', () => {
-        searchInput.value = '';
-        clearSearch.style.display = 'none';
-        searchDropdown.classList.remove('show');
+    if (clearSearch) {
+        clearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearch.style.display = 'none';
+            searchDropdown.classList.remove('show');
+            
+            if (isSearchMode) {
+                isSearchMode = false;
+                searchQuery = '';
+                loadPosts();
+            }
+        });
+    }
+
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.classList.add('spinning');
+            console.log('Manual refresh triggered');
+            
+            try {
+                await loadPosts();
+                showNotification('Posts refreshed!', 'success');
+            } catch (error) {
+                console.error('Manual refresh failed:', error);
+                showNotification('Failed to refresh posts', 'error');
+            } finally {
+                setTimeout(() => {
+                    refreshBtn.classList.remove('spinning');
+                }, 1000);
+            }
+        });
+    } else {
+        console.log('Refresh button not found, skipping refresh functionality');
+    }
+
+    // Helper function to show notifications
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 300px;
+        `;
         
-        if (isSearchMode) {
-            isSearchMode = false;
-            searchQuery = '';
-            loadPosts();
-        }
-    });
+        const colors = {
+            success: '#28a745',
+            error: '#dc3545',
+            info: '#007bff'
+        };
+        notification.style.backgroundColor = colors[type] || colors.info;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
 
     async function performLiveSearch(query) {
         try {
@@ -1255,25 +1245,27 @@ async function handleHomePageLogic() {
         }
     }
 
-    searchInput.addEventListener("keypress", async (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const query = searchInput.value.trim();
-            
-            if (query === '') {
-                // Empty search - show all posts
-                isSearchMode = false;
-                searchQuery = '';
-                loadPosts();
-                return;
+    if (searchInput) {
+        searchInput.addEventListener("keypress", async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                
+                if (query === '') {
+                    // Empty search - show all posts
+                    isSearchMode = false;
+                    searchQuery = '';
+                    loadPosts();
+                    return;
+                }
+                
+                // Perform search
+                isSearchMode = true;
+                searchQuery = query;
+                await performSearch(query);
             }
-            
-            // Perform search
-            isSearchMode = true;
-            searchQuery = query;
-            await performSearch(query);
-        }
-    });
+        });
+    }
 
     async function performSearch(query) {
         try {
@@ -1351,49 +1343,60 @@ async function handleHomePageLogic() {
         return userCard;
     }
 
-    // Initial load
-    console.log('Loading posts...');
-    loadPosts();
+    // Helper to compare two sets
+    function setsEqual(a, b) {
+        return a.size === b.size && [...a].every(value => b.has(value));
+    }
 
-    // Smart auto-refresh - only fetch count, not full data
+    // Auto-refresh posts every 5 seconds (only when not in search mode)
     let lastPostCount = 0;
+    let lastPostIds = new Set();
+
     setInterval(async () => {
-        // Don't auto-refresh if user is searching
         if (isSearchMode) return;
-        
+
         try {
-            // Just check if there are new posts (lightweight request)
-            const response = await fetch('/api/posts/count');
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Only reload if there are new posts
-                if (data.count !== lastPostCount && lastPostCount > 0) {
-                    console.log('New posts detected, refreshing...');
-                    lastPostCount = data.count;
-                    loadPosts(true); // Force refresh
+            const response = await fetch('/api/posts?t=' + Date.now());
+            if (!response.ok) return;
+
+            const postsData = await response.json();
+            const currentPostIds = new Set(postsData.map(post => post.id));
+            const countChanged = postsData.length !== lastPostCount;
+            const idsChanged = !setsEqual(currentPostIds, lastPostIds);
+
+            if (countChanged || idsChanged) {
+                console.log('Posts changed, refreshing...');
+                lastPostCount = postsData.length;
+                lastPostIds = currentPostIds;
+
+                postContainer.innerHTML = '';
+                if (postsData.length === 0) {
+                    postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
                 } else {
-                    lastPostCount = data.count;
+                    postsData.forEach(post => {
+                        const postCard = createPostElement(post);
+                        postContainer.appendChild(postCard);
+                    });
                 }
             }
         } catch (error) {
-            // Fallback to full refresh if count endpoint doesn't exist
-            try {
-                const response = await fetch('/api/posts');
-                if (response.ok) {
-                    const postsData = await response.json();
-                    if (postsData.length !== lastPostCount && lastPostCount > 0) {
-                        lastPostCount = postsData.length;
-                        loadPosts(true);
-                    } else {
-                        lastPostCount = postsData.length;
-                    }
-                }
-            } catch (err) {
-                console.error("Auto-refresh failed:", err);
-            }
+            console.error('Auto-refresh failed:', error);
         }
-    }, 10000); // Check every 10 seconds (reduced frequency)
+    }, 5000);
+
+    // Initial load
+    console.log('🚀 Starting initial post load...');
+    await loadPosts();
+    // Seed the refresh tracker with current state so it doesn't re-render immediately
+    try {
+        const r = await fetch('/api/posts?t=' + Date.now());
+        if (r.ok) {
+            const initial = await r.json();
+            lastPostCount = initial.length;
+            lastPostIds = new Set(initial.map(p => p.id));
+        }
+    } catch(e) {}
+    console.log('✅ handleHomePageLogic setup complete');
 }
 
 // --- Main Execution ---

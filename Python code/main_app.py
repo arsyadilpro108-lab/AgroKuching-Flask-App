@@ -144,7 +144,37 @@ def init_db():
             cursor.execute("INSERT OR IGNORE INTO categories (name) VALUES ('Crops'), ('Livestock'), ('Equipment'), ('Seeds'), ('Fertilizer'), ('Other')")
         except sqlite3.OperationalError as e:
             print(f"Warning: Could not insert categories: {e}")
-        
+
+        # Ensure moderation columns exist (added by migration, safe to re-run)
+        for col_sql in [
+            "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
+            "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'",
+            "ALTER TABLE users ADD COLUMN banned_until TEXT",
+            "ALTER TABLE users ADD COLUMN ban_reason TEXT",
+        ]:
+            try:
+                cursor.execute(col_sql)
+            except Exception:
+                pass  # Column already exists
+
+        # Performance indexes
+        indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
+            "CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)",
+            "CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_posts_post_date ON posts(post_date)",
+            "CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)",
+            "CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id)",
+            "CREATE INDEX IF NOT EXISTS idx_warnings_user_id ON warnings(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_mod_actions_date ON moderation_actions(created_date)",
+            "CREATE INDEX IF NOT EXISTS idx_reports_status ON user_reports(status)",
+        ]
+        for idx in indexes:
+            try:
+                cursor.execute(idx)
+            except Exception:
+                pass
+
         db.commit()
         print("Database initialized.")
 
@@ -305,80 +335,6 @@ def reset_password():
         db.rollback()
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
-# New forgot password flow endpoints
-@app.route('/api/find-account', methods=['POST'])
-def find_account():
-    """Find account by email or username"""
-    data = request.json
-    search = data.get('search', '').strip()
-    
-    if not search:
-        return jsonify({'message': 'Please provide email or username'}), 400
-    
-    db = get_db()
-    # Try to find by email or username
-    user = db.execute(
-        "SELECT id, username, email, profile_pic FROM users WHERE email = ? OR username = ?",
-        (search, search)
-    ).fetchone()
-    
-    if not user:
-        return jsonify({'message': 'No account found with that email or username'}), 404
-    
-    return jsonify(dict(user)), 200
-
-@app.route('/api/send-reset-code', methods=['POST'])
-def send_reset_code():
-    """Send verification code to email"""
-    import random
-    
-    data = request.json
-    email = data.get('email')
-    username = data.get('username')
-    
-    if not email or not username:
-        return jsonify({'message': 'Email and username required'}), 400
-    
-    # Generate 6-digit code
-    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-    
-    # In production, you would send this via email
-    # For now, we'll return it in the response (NOT SECURE FOR PRODUCTION)
-    print(f"Reset code for {username}: {code}")
-    
-    return jsonify({'message': 'Code sent', 'code': code}), 200
-
-@app.route('/api/reset-password-verified', methods=['POST'])
-def reset_password_verified():
-    """Reset password after code verification"""
-    data = request.json
-    username = data.get('username')
-    email = data.get('email')
-    new_password = data.get('new_password')
-    code = data.get('code')
-    
-    if not all([username, email, new_password, code]):
-        return jsonify({'message': 'All fields are required'}), 400
-    
-    if len(new_password) < 6:
-        return jsonify({'message': 'Password must be at least 6 characters'}), 400
-    
-    db = get_db()
-    user = db.execute("SELECT * FROM users WHERE username = ? AND email = ?", (username, email)).fetchone()
-    
-    if not user:
-        return jsonify({'message': 'Invalid request'}), 404
-    
-    try:
-        password_hash = generate_password_hash(new_password)
-        db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user['id']))
-        db.commit()
-        
-        return jsonify({'message': 'Password reset successfully'}), 200
-    except Exception as e:
-        db.rollback()
-        return jsonify({'message': 'Server error', 'error': str(e)}), 500
-
 # Profile Management
 @app.route('/api/profile', methods=['GET'])
 @token_required
@@ -390,7 +346,8 @@ def get_profile(current_user):
         'phone': current_user['phone'],
         'description': current_user['description'],
         'profile_picture': current_user['profile_pic'],
-        'registration_date': current_user['reg_date']
+        'registration_date': current_user['reg_date'],
+        'role': current_user['role'] if 'role' in current_user.keys() else 'user'
     }), 200
 
 @app.route('/api/profile/mini', methods=['GET'])
@@ -590,18 +547,46 @@ def get_posts():
             post = dict(row)
             post['images'] = json.loads(post['images'])
             posts.append(post)
-            
-        return jsonify(posts), 200
+        
+        response = jsonify(posts)
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        return response, 200
     except Exception as e:
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
-@app.route('/api/posts/count', methods=['GET'])
-def get_posts_count():
-    """Lightweight endpoint to check if there are new posts"""
+@app.route('/api/posts/with-role', methods=['GET'])
+@token_required
+def get_posts_with_role(current_user):
+    """Get posts with current user role information for menu options"""
     try:
         db = get_db()
-        count = db.execute("SELECT COUNT(*) as count FROM posts").fetchone()['count']
-        return jsonify({'count': count}), 200
+        posts_rows = db.execute(
+            """
+            SELECT p.*, u.username as author_username, u.profile_pic as author_profile_pic 
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            ORDER BY p.post_date DESC
+            """
+        ).fetchall()
+        
+        posts = []
+        for row in posts_rows:
+            post = dict(row)
+            post['images'] = json.loads(post['images'])
+            posts.append(post)
+        
+        # Get current user role
+        user_role = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        current_role = user_role['role'] if user_role else 'user'
+            
+        return jsonify({
+            'posts': posts,
+            'current_user': {
+                'id': current_user['id'],
+                'username': current_user['username'],
+                'role': current_role
+            }
+        }), 200
     except Exception as e:
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
@@ -1236,7 +1221,7 @@ def handle_join(data):
         print(f"User {user_id} joined their room and is now online")
         
         # Broadcast online status
-        socketio.emit('user_online', {'user_id': user_id}, broadcast=True)
+        socketio.emit('user_online', {'user_id': user_id})
 
 @socketio.on('leave')
 def handle_leave(data):
@@ -1247,7 +1232,7 @@ def handle_leave(data):
         print(f"User {user_id} left their room and is now offline")
         
         # Broadcast offline status
-        socketio.emit('user_offline', {'user_id': user_id}, broadcast=True)
+        socketio.emit('user_offline', {'user_id': user_id})
 
 @socketio.on('typing')
 def handle_typing(data):
@@ -1275,10 +1260,452 @@ def check_user_online(username):
     except Exception as e:
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
-# Serve service worker
-@app.route('/service-worker.js')
-def serve_service_worker():
-    return send_from_directory(ROOT_DIR, 'service-worker.js', mimetype='application/javascript')
+# Admin API Endpoints
+@app.route('/api/admin/check', methods=['GET'])
+@token_required
+def check_admin_access(current_user):
+    """Check if current user has admin privileges"""
+    try:
+        db = get_db()
+        user = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        
+        if user and user['role'] == 'admin':
+            return jsonify({'is_admin': True, 'username': current_user['username']}), 200
+        else:
+            return jsonify({'is_admin': False}), 403
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/users', methods=['GET'])
+@token_required
+def get_all_users(current_user):
+    """Get all users for admin management"""
+    try:
+        db = get_db()
+        # Check admin privileges
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+        
+        users = db.execute("""
+            SELECT id, username, email, role, status, reg_date, 
+                   banned_until, ban_reason
+            FROM users 
+            ORDER BY reg_date DESC
+        """).fetchall()
+        
+        return jsonify([dict(user) for user in users]), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/posts', methods=['GET'])
+@token_required
+def get_all_posts_admin(current_user):
+    """Get all posts for admin management"""
+    try:
+        db = get_db()
+        # Check admin privileges
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+        
+        posts = db.execute("""
+            SELECT p.*, u.username as author_username, u.profile_pic as author_profile_pic 
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            ORDER BY p.post_date DESC
+        """).fetchall()
+        
+        posts_list = []
+        for row in posts:
+            post = dict(row)
+            post['images'] = json.loads(post['images'])
+            posts_list.append(post)
+            
+        return jsonify(posts_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/posts/<int:post_id>', methods=['DELETE'])
+@token_required
+def admin_delete_post(current_user, post_id):
+    """Admin delete any post with reason"""
+    try:
+        db = get_db()
+        # Check admin privileges
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+        
+        data = request.json
+        reason = data.get('reason', 'Deleted by admin')
+        
+        # Get post details before deletion
+        post = db.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+        if not post:
+            return jsonify({'message': 'Post not found'}), 404
+        
+        # Log the deletion (if moderation_actions table exists)
+        try:
+            db.execute("""
+                INSERT INTO moderation_actions (moderator_id, target_user_id, action_type, reason, created_date)
+                VALUES (?, ?, 'delete_post', ?, ?)
+            """, (current_user['id'], post['user_id'], reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        except:
+            pass  # Table might not exist yet
+        
+        # Delete the post
+        db.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+        db.commit()
+        
+        return jsonify({'message': 'Post deleted successfully', 'reason': reason}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/posts/<int:post_id>/report', methods=['POST'])
+@token_required
+def report_post(current_user, post_id):
+    """Report a post for moderation"""
+    try:
+        db = get_db()
+        
+        # Check if post exists
+        post = db.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+        if not post:
+            return jsonify({'message': 'Post not found'}), 404
+        
+        data = request.json
+        reason = data.get('reason', 'Inappropriate content')
+        description = data.get('description', '')
+        
+        # Check if user already reported this post
+        existing_report = db.execute("""
+            SELECT id FROM user_reports 
+            WHERE reporter_id = ? AND reported_post_id = ?
+        """, (current_user['id'], post_id)).fetchone()
+        
+        if existing_report:
+            return jsonify({'message': 'You have already reported this post'}), 400
+        
+        # Create report
+        db.execute("""
+            INSERT INTO user_reports (reporter_id, reported_user_id, reported_post_id, reason, description, status, created_date)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?)
+        """, (current_user['id'], post['user_id'], post_id, reason, description, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        
+        db.commit()
+        return jsonify({'message': 'Post reported successfully. Thank you for helping keep our community safe.'}), 201
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/users/<int:user_id>/ban', methods=['POST'])
+@token_required
+def ban_user(current_user, user_id):
+    """Ban a user"""
+    try:
+        db = get_db()
+        # Check admin privileges
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+        
+        data = request.json
+        reason = data.get('reason', 'Banned by admin')
+        duration_days = data.get('duration_days', 7)
+        
+        # Calculate ban end date
+        ban_until = datetime.now() + timedelta(days=duration_days)
+        
+        # Update user status
+        db.execute("""
+            UPDATE users 
+            SET status = 'banned', banned_until = ?, ban_reason = ?
+            WHERE id = ?
+        """, (ban_until.strftime("%Y-%m-%d %H:%M:%S"), reason, user_id))
+        
+        # Log the action
+        try:
+            db.execute("""
+                INSERT INTO moderation_actions (moderator_id, target_user_id, action_type, reason, created_date)
+                VALUES (?, ?, 'ban_user', ?, ?)
+            """, (current_user['id'], user_id, reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        except:
+            pass
+        
+        db.commit()
+        return jsonify({'message': 'User banned successfully'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/users/<int:user_id>/unban', methods=['POST'])
+@token_required
+def unban_user(current_user, user_id):
+    """Unban a user"""
+    try:
+        db = get_db()
+        # Check admin privileges
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+        
+        # Update user status to active
+        db.execute("""
+            UPDATE users 
+            SET status = 'active', banned_until = NULL, ban_reason = NULL
+            WHERE id = ?
+        """, (user_id,))
+        
+        # Log the action
+        try:
+            db.execute("""
+                INSERT INTO moderation_actions (moderator_id, target_user_id, action_type, reason, created_date)
+                VALUES (?, ?, 'unban_user', 'Unbanned by admin', ?)
+            """, (current_user['id'], user_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        except:
+            pass
+        
+        db.commit()
+        return jsonify({'message': 'User unbanned successfully'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/users/<int:user_id>/role', methods=['POST'])
+@token_required
+def change_user_role(current_user, user_id):
+    """Change a user's role (promote/demote)"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        data = request.json
+        new_role = data.get('role')
+        if new_role not in ('user', 'moderator', 'admin'):
+            return jsonify({'message': 'Invalid role'}), 400
+
+        target = db.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not target:
+            return jsonify({'message': 'User not found'}), 404
+
+        db.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        try:
+            db.execute("""
+                INSERT INTO moderation_actions (moderator_id, target_user_id, action_type, reason, created_date)
+                VALUES (?, ?, 'role_change', ?, ?)
+            """, (current_user['id'], user_id, f'Role changed to {new_role}', datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        except:
+            pass
+        db.commit()
+        return jsonify({'message': f'Role updated to {new_role}'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<int:user_id>/warn', methods=['POST'])
+@token_required
+def warn_user(current_user, user_id):
+    """Issue a warning to a user"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        data = request.json
+        reason = data.get('reason', 'Violation of community guidelines')
+
+        target = db.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not target:
+            return jsonify({'message': 'User not found'}), 404
+
+        db.execute("""
+            INSERT INTO warnings (user_id, moderator_id, reason, created_date)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, current_user['id'], reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        try:
+            db.execute("""
+                INSERT INTO moderation_actions (moderator_id, target_user_id, action_type, reason, created_date)
+                VALUES (?, ?, 'warn_user', ?, ?)
+            """, (current_user['id'], user_id, reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        except:
+            pass
+        db.commit()
+        return jsonify({'message': 'Warning issued successfully'}), 201
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/users/<int:user_id>/warnings', methods=['GET'])
+@token_required
+def get_user_warnings(current_user, user_id):
+    """Get all warnings for a user"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        warnings = db.execute("""
+            SELECT w.*, u.username as admin_username
+            FROM warnings w
+            JOIN users u ON w.moderator_id = u.id
+            WHERE w.user_id = ?
+            ORDER BY w.created_date DESC
+        """, (user_id,)).fetchall()
+        return jsonify([dict(w) for w in warnings]), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/warnings/<int:warning_id>', methods=['DELETE'])
+@token_required
+def delete_warning(current_user, warning_id):
+    """Remove a warning"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        db.execute("DELETE FROM warnings WHERE id = ?", (warning_id,))
+        db.commit()
+        return jsonify({'message': 'Warning removed'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/reports', methods=['GET'])
+@token_required
+def get_all_reports(current_user):
+    """Get all user reports"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        reports = db.execute("""
+            SELECT r.*,
+                   reporter.username as reporter_username,
+                   reported.username as reported_username
+            FROM user_reports r
+            JOIN users reporter ON r.reporter_id = reporter.id
+            JOIN users reported ON r.reported_user_id = reported.id
+            ORDER BY r.created_date DESC
+        """).fetchall()
+        return jsonify([dict(r) for r in reports]), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/reports/<int:report_id>/resolve', methods=['POST'])
+@token_required
+def resolve_report(current_user, report_id):
+    """Resolve or dismiss a report"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        data = request.json
+        action = data.get('action', 'resolved')  # 'resolved' or 'dismissed'
+        notes = data.get('notes', '')
+
+        db.execute("""
+            UPDATE user_reports SET status = ?, resolved_by = ?, resolved_date = ?
+            WHERE id = ?
+        """, (action, current_user['id'], datetime.now().strftime("%Y-%m-%d %H:%M:%S"), report_id))
+        db.commit()
+        return jsonify({'message': f'Report {action}'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/activity', methods=['GET'])
+@token_required
+def get_activity_log(current_user):
+    """Get moderation activity log"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        limit = request.args.get('limit', 100, type=int)
+        actions = db.execute("""
+            SELECT ma.*,
+                   a.username as admin_username,
+                   t.username as target_username
+            FROM moderation_actions ma
+            JOIN users a ON ma.moderator_id = a.id
+            JOIN users t ON ma.target_user_id = t.id
+            ORDER BY ma.created_date DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        return jsonify([dict(a) for a in actions]), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/warnings/all', methods=['GET'])
+@token_required
+def get_all_warnings(current_user):
+    """Get all warnings across all users in one query"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        warnings = db.execute("""
+            SELECT w.*,
+                   target.username as target_username,
+                   target.profile_pic as profile_pic,
+                   mod.username as admin_username
+            FROM warnings w
+            JOIN users target ON w.user_id = target.id
+            JOIN users mod ON w.moderator_id = mod.id
+            ORDER BY w.created_date DESC
+        """).fetchall()
+        return jsonify([dict(w) for w in warnings]), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+
+@app.route('/api/admin/stats', methods=['GET'])
+@token_required
+def get_admin_stats(current_user):
+    """Get platform statistics for admin dashboard"""
+    try:
+        db = get_db()
+        admin_check = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+        if not admin_check or admin_check['role'] != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        row = db.execute("""
+            SELECT
+                (SELECT COUNT(*) FROM users) as total_users,
+                (SELECT COUNT(*) FROM posts) as total_posts,
+                (SELECT COUNT(*) FROM messages) as total_messages,
+                (SELECT COUNT(*) FROM users WHERE role = 'admin') as admin_count,
+                (SELECT COUNT(*) FROM users WHERE status = 'banned') as banned_count,
+                (SELECT COUNT(*) FROM user_reports WHERE status = 'pending') as pending_reports
+        """).fetchone()
+
+        return jsonify(dict(row)), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
 
 # Run Application
 if __name__ == '__main__':

@@ -683,6 +683,23 @@ fetchWithAuth('/api/profile')
             // Show default icon if no profile picture
             profileBtn.innerHTML = '👤';
         }
+        
+        // Check if user is admin and show admin link
+        fetchWithAuth('/api/admin/check')
+            .then(adminData => {
+                if (adminData.is_admin) {
+                    const adminLink = document.getElementById('adminLink');
+                    if (adminLink) {
+                        adminLink.style.display = 'block';
+                        adminLink.href = '/HTML code/admin-facebook.html';
+                        adminLink.innerHTML = 'Admin Panel';
+                    }
+                }
+            })
+            .catch(e => {
+                // User is not admin, keep link hidden
+                console.log('User is not admin');
+            });
     })
     .catch(e => {
         console.error("Could not load header pic:", e);

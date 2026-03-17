@@ -81,6 +81,17 @@ header {
     background: #fee;
 }
 
+#adminLink {
+    color: #1877f2;
+    font-weight: 600;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#adminLink:hover {
+    background: #e7f0fd;
+    color: #1877f2;
+}
+
 .dropdown.show {
     display: block;
 }
@@ -1197,4 +1208,149 @@ Image Gallery Modal */
     50% {
         opacity: 0.6;
     }
+}
+/* Report Modal Styles */
+#reportModal .modal-content {
+    max-width: 500px;
+    width: 90%;
+}
+
+#reportModal .form-group {
+    margin-bottom: 20px;
+}
+
+#reportModal label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+#reportModal select,
+#reportModal textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.3s ease;
+}
+
+#reportModal select:focus,
+#reportModal textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+#reportModal textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+#reportModal .form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+#reportModal .form-actions button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#reportModal .form-actions button[type="button"] {
+    background: #f5f5f5;
+    color: #666;
+}
+
+#reportModal .form-actions button[type="button"]:hover {
+    background: #e0e0e0;
+}
+
+#reportModal .form-actions button[type="submit"] {
+    background: #ff4444;
+    color: white;
+}
+
+#reportModal .form-actions button[type="submit"]:hover {
+    background: #cc3333;
+}
+
+/* Enhanced Post Menu Styles */
+.post-menu-dropdown .report-option {
+    color: #ff6b35;
+}
+
+.post-menu-dropdown .report-option:hover {
+    background: #fff5f5;
+    color: #ff4444;
+}
+
+.post-menu-dropdown .admin-delete-option {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.post-menu-dropdown .admin-delete-option:hover {
+    background: #fff5f5;
+    color: #c82333;
+}
+
+.post-menu-dropdown .admin-delete-option::before {
+    content: "🛡️ ";
+}
+
+/* Admin Badge for Menu Items */
+.post-menu-dropdown button[class*="admin-"] {
+    position: relative;
+}
+
+.post-menu-dropdown button[class*="admin-"]::after {
+    content: "ADMIN";
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    background: #dc3545;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+/* Refresh Button */
+.refresh-btn {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.refresh-btn.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: translateY(-50%) rotate(0deg); }
+    to { transform: translateY(-50%) rotate(360deg); }
 }

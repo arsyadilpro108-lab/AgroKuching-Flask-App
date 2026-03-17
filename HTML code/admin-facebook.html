@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroKuching Admin</title>
+    <link rel="stylesheet" href="/CSS code/admin-facebook.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="authLoader" style="position:fixed;inset:0;background:#f0f2f5;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:sans-serif">
+        <div style="width:40px;height:40px;border:3px solid #e4e6ea;border-top:3px solid #1877f2;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px"></div>
+        <p style="color:#606770;font-size:15px" id="authLoaderMsg">Checking access...</p>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="logo"><i class="fas fa-seedling"></i><span>AgroKuching Admin</span></div>
+        </div>
+        <div class="nav-right">
+            <div class="profile-dropdown" id="profileToggle">
+                <img src="/pictures/Default PFP.png" alt="Admin" class="profile-pic" id="adminProfilePic">
+                <span id="adminUsername">Admin</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="dropdown-menu" id="profileDropdown">
+                    <a href="/HTML code/home-page.html"><i class="fas fa-home"></i> Back to Platform</a>
+                    <div class="divider"></div>
+                    <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <h3>Overview</h3>
+            <a href="#" class="sidebar-item active" data-section="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
+        </div>
+        <div class="sidebar-section">
+            <h3>Content</h3>
+            <a href="#" class="sidebar-item" data-section="users"><i class="fas fa-users"></i><span>Users</span><span class="count" id="usersCount">-</span></a>
+            <a href="#" class="sidebar-item" data-section="posts"><i class="fas fa-file-alt"></i><span>Posts</span><span class="count" id="postsCount">-</span></a>
+        </div>
+        <div class="sidebar-section">
+            <h3>Moderation</h3>
+            <a href="#" class="sidebar-item" data-section="reports"><i class="fas fa-flag"></i><span>Reports</span><span class="count badge-red" id="reportsCount">-</span></a>
+            <a href="#" class="sidebar-item" data-section="banned"><i class="fas fa-ban"></i><span>Banned Users</span></a>
+        </div>
+    </aside>
+    <main class="main-content">
+        <section id="dashboard-section" class="content-section active">
+            <div class="page-header"><h1>Dashboard</h1><p>Platform overview</p></div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div class="stat-content"><h3 id="totalUsers">-</h3><p>Total Users</p></div></div>
+                <div class="stat-card"><div class="stat-icon green"><i class="fas fa-file-alt"></i></div><div class="stat-content"><h3 id="totalPosts">-</h3><p>Total Posts</p></div></div>
+                <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-comments"></i></div><div class="stat-content"><h3 id="totalMessages">-</h3><p>Messages</p></div></div>
+                <div class="stat-card"><div class="stat-icon red"><i class="fas fa-flag"></i></div><div class="stat-content"><h3 id="pendingReports">-</h3><p>Pending Reports</p></div></div>
+            </div>
+            <div class="dashboard-card" style="margin-top:24px">
+                <div class="card-header"><h3>Quick Actions</h3></div>
+                <div class="quick-actions">
+                    <button class="action-btn" onclick="showSection('users')"><i class="fas fa-users"></i><span>Manage Users</span></button>
+                    <button class="action-btn" onclick="showSection('posts')"><i class="fas fa-file-alt"></i><span>Review Posts</span></button>
+                    <button class="action-btn" onclick="showSection('reports')"><i class="fas fa-flag"></i><span>Handle Reports</span></button>
+                    <button class="action-btn" onclick="showSection('banned')"><i class="fas fa-ban"></i><span>Banned Users</span></button>
+                </div>
+            </div>
+        </section>
+        <section id="users-section" class="content-section">
+            <div class="page-header">
+                <h1>User Management</h1>
+                <div class="header-actions">
+                    <input type="text" placeholder="Search users..." id="userSearch" class="search-input">
+                    <select id="userStatusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="banned">Banned</option>
+                    </select>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+                        <tbody id="usersTableBody"><tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section id="posts-section" class="content-section">
+            <div class="page-header"><h1>Post Management</h1></div>
+            <div class="content-card">
+                <div class="posts-grid" id="postsGrid"><div class="loading"><div class="spinner"></div> Loading...</div></div>
+            </div>
+        </section>
+        <section id="reports-section" class="content-section">
+            <div class="page-header"><h1>Reports</h1></div>
+            <div class="content-card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr><th>Reporter</th><th>Reported User</th><th>Reason</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody id="reportsTableBody"><tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section id="banned-section" class="content-section">
+            <div class="page-header"><h1>Banned Users</h1></div>
+            <div class="content-card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr><th>User</th><th>Email</th><th>Banned Until</th><th>Reason</th><th>Actions</th></tr></thead>
+                        <tbody id="bannedTableBody"><tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+    <div id="banModal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header"><h3 id="banModalTitle">Ban User</h3><button class="modal-close" onclick="closeModal('banModal')">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="banUserId">
+                <div class="form-group"><label>Reason</label><textarea id="banReason" rows="3" placeholder="Enter reason..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;resize:vertical"></textarea></div>
+                <div class="form-group"><label>Duration</label>
+                    <select id="banDuration" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px">
+                        <option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="30">30 days</option><option value="36500">Permanent</option>
+                    </select>
+                </div>
+                <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('banModal')">Cancel</button><button class="btn-danger" id="banConfirmBtn">Ban User</button></div>
+            </div>
+        </div>
+    </div>
+    <div id="roleModal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header"><h3 id="roleModalTitle">Change Role</h3><button class="modal-close" onclick="closeModal('roleModal')">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="roleUserId">
+                <div class="form-group"><label>New Role</label>
+                    <select id="roleSelect" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px">
+                        <option value="user">User</option><option value="moderator">Moderator</option><option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('roleModal')">Cancel</button><button class="btn-primary" id="roleConfirmBtn">Update Role</button></div>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script src="/JS code/admin-facebook.js"></script>
+</body>
+</html>

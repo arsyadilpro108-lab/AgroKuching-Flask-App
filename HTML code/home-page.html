@@ -17,6 +17,7 @@
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="Search posts or users..." autocomplete="off" />
             <button class="clear-search-icon" id="clearSearch" style="display: none;">&times;</button>
+            <button class="refresh-btn" id="refreshBtn" title="Refresh Posts">🔄</button>
             <div class="search-dropdown" id="searchDropdown"></div>
         </div>
 
@@ -30,6 +31,7 @@
             <div class="dropdown" id="profileDropdown">
                 <a href="#" id="profileLink">Profile</a>
                 <a href="/HTML code/settings.html" id="settingsLink">Settings</a>
+                <a href="/HTML code/admin-facebook.html" id="adminLink" style="display: none;">Admin Panel</a>
                 <a href="#" id="logoutLink">Log out</a>
                 <a href="#" id="deleteAccountLink" class="delete-account-link">Delete Account</a>
             </div>
@@ -47,6 +49,51 @@
 
         <div id="postContainer"></div>
     </main>
+
+    <script>
+        // Debug functions
+        async function checkCurrentUser() {
+            const output = document.getElementById('debugOutput');
+            try {
+                const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                output.innerHTML = `Token exists: ${!!token}<br>`;
+                
+                const response = await fetch('/api/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                output.innerHTML += `Current user: ${data.username}<br>Profile data: ${JSON.stringify(data)}`;
+            } catch (error) {
+                output.innerHTML += `Error: ${error.message}`;
+            }
+        }
+        
+        async function checkAdminStatus() {
+            const output = document.getElementById('debugOutput');
+            try {
+                const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+                const response = await fetch('/api/admin/check', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                output.innerHTML += `<br>Admin check: ${JSON.stringify(data)}`;
+            } catch (error) {
+                output.innerHTML += `<br>Admin check error: ${error.message}`;
+            }
+        }
+        
+        function showAdminLink() {
+            const adminLink = document.getElementById('adminLink');
+            if (adminLink) {
+                adminLink.style.display = 'block';
+                adminLink.href = '/HTML code/admin-facebook.html';
+                adminLink.innerHTML = '🎛️ Admin Panel';
+                document.getElementById('debugOutput').innerHTML += '<br>Admin link forced to show';
+            } else {
+                document.getElementById('debugOutput').innerHTML += '<br>Admin link element not found';
+            }
+        }
+    </script>
 
     <div class="modal" id="postModal">
         <div class="modal-content">
