@@ -151,13 +151,17 @@ if USE_POSTGRES:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None:
+            import ssl
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
             conn = pg8000.native.Connection(
                 user=_pg_url.username,
                 password=_pg_url.password,
                 host=_pg_url.hostname,
                 port=_pg_url.port or 5432,
                 database=_pg_url.path.lstrip('/'),
-                ssl_context=True
+                ssl_context=ssl_ctx
             )
             db = g._database = PgWrapper(conn)
         return db
