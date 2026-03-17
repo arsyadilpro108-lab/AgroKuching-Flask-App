@@ -50,12 +50,12 @@ if USE_POSTGRES:
             self._conn = conn
 
         def execute(self, sql, params=None):
-            cur = self._conn.cursor()
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cur.execute(sql.replace('?', '%s'), params)
             return cur
 
         def cursor(self):
-            return self._conn.cursor()
+            return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         def commit(self):
             self._conn.commit()
