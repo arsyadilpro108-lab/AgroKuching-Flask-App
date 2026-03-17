@@ -35,7 +35,7 @@ print(f"JS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'JS code'))}")
 print(f"CSS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'CSS code'))}")
 
 # Initialize SocketIO for live messaging
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=False, engineio_logger=False)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent', logger=False, engineio_logger=False)
 
 # --- Database Setup ---
 
