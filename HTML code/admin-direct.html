@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AgroKuching</title>
+    <link rel="stylesheet" href="/CSS code/admin-panel.css">
+    <style>
+        .temp-access {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="temp-access">
+        🛡️ Direct Admin Access (Temporary)
+    </div>
+    
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="/pictures/logo.png" alt="Logo" class="logo">
+                <h2>Admin Panel</h2>
+                <p id="admin-username">AgroKuchingOfficial</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                    📊 Dashboard
+                </a>
+                <a href="#users" class="nav-item" data-section="users">
+                    👥 Users
+                </a>
+                <a href="#posts" class="nav-item" data-section="posts">
+                    📝 Posts
+                </a>
+                <a href="#reports" class="nav-item" data-section="reports">
+                    🚨 Reports
+                </a>
+                <a href="#moderation" class="nav-item" data-section="moderation">
+                    🛡️ Moderation Log
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="back-btn" onclick="window.location.href='/HTML code/home-page.html'">
+                    ← Back to Site
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="user-info">
+                    <span id="admin-username-header">AgroKuchingOfficial</span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="total-users">Loading...</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-info">
+                            <h3 id="total-posts">Loading...</h3>
+                            <p>Total Posts</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🚨</div>
+                        <div class="stat-info">
+                            <h3 id="pending-reports">Loading...</h3>
+                            <p>Pending Reports</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🛡️</div>
+                        <div class="stat-info">
+                            <h3 id="admin-count">Loading...</h3>
+                            <p>Administrators</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h3>Recent Activity</h3>
+                    <div id="recent-users" class="activity-list">
+                        <p>Loading recent activity...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Section -->
+            <div id="users" class="content-section">
+                <div class="section-header">
+                    <h2>User Management</h2>
+                    <div class="search-bar">
+                        <input type="text" id="user-search" placeholder="Search users...">
+                        <button onclick="searchUsers()">🔍</button>
+                    </div>
+                </div>
+                <div id="users-list" class="users-grid">
+                    <p>Loading users...</p>
+                </div>
+            </div>
+
+            <!-- Posts Section -->
+            <div id="posts" class="content-section">
+                <div class="section-header">
+                    <h2>Post Management</h2>
+                    <div class="search-bar">
+                        <input type="text" id="post-search" placeholder="Search posts...">
+                        <button onclick="searchPosts()">🔍</button>
+                    </div>
+                </div>
+                <div id="posts-list" class="posts-grid">
+                    <p>Loading posts...</p>
+                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div id="reports" class="content-section">
+                <div class="section-header">
+                    <h2>User Reports</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" onclick="filterReports('all')">All</button>
+                        <button class="filter-btn" onclick="filterReports('pending')">Pending</button>
+                        <button class="filter-btn" onclick="filterReports('resolved')">Resolved</button>
+                    </div>
+                </div>
+                <div id="reports-list" class="reports-grid">
+                    <p>Loading reports...</p>
+                </div>
+            </div>
+
+            <!-- Moderation Log Section -->
+            <div id="moderation" class="content-section">
+                <div class="section-header">
+                    <h2>Moderation Log</h2>
+                    <div class="date-filter">
+                        <input type="date" id="log-date-from">
+                        <input type="date" id="log-date-to">
+                        <button onclick="filterModerationLog()">Filter</button>
+                    </div>
+                </div>
+                <div id="moderation-log" class="log-list">
+                    <p>Moderation log feature coming soon...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>User Actions</h2>
+            <div id="user-modal-content">
+                <!-- User action content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="post-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Post Actions</h2>
+            <div id="post-modal-content">
+                <!-- Post action content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/JS code/admin-panel.js"></script>
+    <script>
+        // Override the access check for direct access
+        window.onload = function() {
+            // Skip the normal access check and load directly
+            loadDashboard();
+            
+            // Set up navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.getAttribute('data-section');
+                    showSection(section);
+                });
+            });
+        };
+        
+        function logout() {
+            localStorage.removeItem('authToken');
+            sessionStorage.removeItem('authToken');
+            window.location.href = '/HTML code/log-in.html';
+        }
+    </script>
+</body>
+</html>

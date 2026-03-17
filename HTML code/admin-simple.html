@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AgroKuching</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .admin-card {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .admin-card:hover {
+            transform: translateY(-5px);
+        }
+        .admin-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .back-btn {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Admin Panel</h1>
+            <p>Welcome, <span id="adminName">AgroKuchingOfficial</span></p>
+        </div>
+
+        <div class="stats" id="statsContainer">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">Loading...</div>
+                <div>Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalPosts">Loading...</div>
+                <div>Total Posts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalReports">Loading...</div>
+                <div>Pending Reports</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="adminCount">Loading...</div>
+                <div>Administrators</div>
+            </div>
+        </div>
+
+        <div class="admin-grid">
+            <div class="admin-card">
+                <h3>👥 User Management</h3>
+                <p>Manage users, ban/unban, issue warnings, and promote moderators</p>
+                <button class="admin-btn" onclick="alert('User management feature - coming soon!')">Manage Users</button>
+            </div>
+
+            <div class="admin-card">
+                <h3>📝 Post Management</h3>
+                <p>View all posts, delete inappropriate content, and moderate discussions</p>
+                <button class="admin-btn" onclick="alert('Post management feature - coming soon!')">Manage Posts</button>
+            </div>
+
+            <div class="admin-card">
+                <h3>🚨 Reports System</h3>
+                <p>Handle user reports, resolve complaints, and take appropriate actions</p>
+                <button class="admin-btn" onclick="alert('Reports system feature - coming soon!')">View Reports</button>
+            </div>
+
+            <div class="admin-card">
+                <h3>🛡️ Moderation Log</h3>
+                <p>Track all moderation activities and administrative actions</p>
+                <button class="admin-btn" onclick="alert('Moderation log feature - coming soon!')">View Log</button>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/HTML code/home-page.html" class="admin-btn back-btn">🏠 Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        // Load basic stats
+        async function loadStats() {
+            try {
+                // Get total users
+                const usersResponse = await fetch('/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || sessionStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (usersResponse.ok) {
+                    const users = await usersResponse.json();
+                    document.getElementById('totalUsers').textContent = users.length;
+                    
+                    // Count admins
+                    const adminCount = users.filter(user => user.role === 'admin' || user.role === 'moderator').length;
+                    document.getElementById('adminCount').textContent = adminCount;
+                } else {
+                    document.getElementById('totalUsers').textContent = 'N/A';
+                    document.getElementById('adminCount').textContent = 'N/A';
+                }
+
+                // Get total posts
+                const postsResponse = await fetch('/api/admin/posts', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || sessionStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (postsResponse.ok) {
+                    const posts = await postsResponse.json();
+                    document.getElementById('totalPosts').textContent = posts.length;
+                } else {
+                    document.getElementById('totalPosts').textContent = 'N/A';
+                }
+
+                // Get reports
+                const reportsResponse = await fetch('/api/admin/reports', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || sessionStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (reportsResponse.ok) {
+                    const reports = await reportsResponse.json();
+                    const pendingReports = reports.filter(report => report.status === 'pending').length;
+                    document.getElementById('totalReports').textContent = pendingReports;
+                } else {
+                    document.getElementById('totalReports').textContent = 'N/A';
+                }
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('totalUsers').textContent = 'Error';
+                document.getElementById('totalPosts').textContent = 'Error';
+                document.getElementById('totalReports').textContent = 'Error';
+                document.getElementById('adminCount').textContent = 'Error';
+            }
+        }
+
+        // Load stats on page load
+        window.onload = loadStats;
+    </script>
+</body>
+</html>

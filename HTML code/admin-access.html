@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel Access - AgroKuching</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .admin-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 15px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .success { background: rgba(76, 175, 80, 0.3); }
+        .error { background: rgba(244, 67, 54, 0.3); }
+        .info { background: rgba(33, 150, 243, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Admin Panel Access</h1>
+        <p>Welcome, AgroKuchingOfficial!</p>
+        
+        <div id="statusDiv" class="status info">
+            🔍 Checking your admin status...
+        </div>
+        
+        <a href="/HTML code/admin-panel.html" class="admin-btn">
+            🛡️ Enter Admin Panel
+        </a>
+        
+        <br>
+        
+        <a href="/HTML code/home-page.html" class="admin-btn" style="background: linear-gradient(45deg, #2196F3, #1976D2);">
+            🏠 Back to Home
+        </a>
+        
+        <div style="margin-top: 30px; font-size: 14px; opacity: 0.8;">
+            <p>If you can't access the admin panel, make sure you're logged in as AgroKuchingOfficial</p>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN_KEY = 'authToken';
+        
+        function getToken() {
+            return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+        }
+        
+        async function checkAdminStatus() {
+            const statusDiv = document.getElementById('statusDiv');
+            const token = getToken();
+            
+            if (!token) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Not logged in. Please <a href="/HTML code/log-in.html" style="color: white;">login</a> first.';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.username === 'AgroKuchingOfficial' && data.role === 'admin') {
+                        statusDiv.className = 'status success';
+                        statusDiv.innerHTML = '✅ Admin access confirmed! You can access the admin panel.';
+                    } else if (data.username === 'AgroKuchingOfficial') {
+                        statusDiv.className = 'status error';
+                        statusDiv.innerHTML = '⚠️ You are AgroKuchingOfficial but role is: ' + (data.role || 'not set');
+                    } else {
+                        statusDiv.className = 'status error';
+                        statusDiv.innerHTML = '❌ You are logged in as: ' + data.username + ' (not AgroKuchingOfficial)';
+                    }
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = '❌ Failed to verify admin status. Please try logging in again.';
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Error checking status: ' + error.message;
+            }
+        }
+        
+        // Check status on page load
+        window.onload = checkAdminStatus;
+    </script>
+</body>
+</html>
