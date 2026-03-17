@@ -7,17 +7,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime, timedelta, timezone
 import json
+from dotenv import load_dotenv
+load_dotenv()
 
 # --- Configuration ---
 app = Flask(__name__, static_folder=None)
 
-# Database in root directory
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 print(f"ROOT_DIR: {ROOT_DIR}")
 print(f"Current file: {__file__}")
 
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+USE_POSTGRES = bool(DATABASE_URL)
+
+# Fix Render's postgres:// -> postgresql:// if needed
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
 app.config['DATABASE'] = os.path.join(ROOT_DIR, 'agrokuching.db')
-app.config['SECRET_KEY'] = 'a-very-secret-key-that-you-should-change'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a-very-secret-key-that-you-should-change')
+
+print(f"Using {'PostgreSQL' if USE_POSTGRES else 'SQLite'}")
 
 # Verify directories exist
 print(f"HTML code exists: {os.path.exists(os.path.join(ROOT_DIR, 'HTML code'))}")
@@ -25,155 +35,276 @@ print(f"JS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'JS code'))}")
 print(f"CSS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'CSS code'))}")
 
 # Initialize SocketIO for live messaging
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=True, engineio_logger=True)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=False, engineio_logger=False)
 
 # --- Database Setup ---
 
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(app.config['DATABASE'])
-        db.row_factory = sqlite3.Row
-    return db
+if USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
 
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+    class PgWrapper:
+        """Wraps a psycopg2 connection to accept ? placeholders like SQLite."""
+        def __init__(self, conn):
+            self._conn = conn
+
+        def execute(self, sql, params=None):
+            cur = self._conn.cursor()
+            cur.execute(sql.replace('?', '%s'), params)
+            return cur
+
+        def cursor(self):
+            return self._conn.cursor()
+
+        def commit(self):
+            self._conn.commit()
+
+        def rollback(self):
+            self._conn.rollback()
+
+        def close(self):
+            self._conn.close()
+
+        @property
+        def closed(self):
+            return self._conn.closed
+
+    def get_db():
+        db = getattr(g, '_database', None)
+        if db is None or db.closed:
+            conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+            db = g._database = PgWrapper(conn)
+        return db
+
+    @app.teardown_appcontext
+    def close_connection(exception):
+        db = getattr(g, '_database', None)
+        if db is not None and not db.closed:
+            db.close()
+
+    def last_id(cursor):
+        cursor.execute("SELECT lastval()")
+        return cursor.fetchone()['lastval']
+
+else:
+    def get_db():
+        db = getattr(g, '_database', None)
+        if db is None:
+            db = g._database = sqlite3.connect(app.config['DATABASE'])
+            db.row_factory = sqlite3.Row
+        return db
+
+    @app.teardown_appcontext
+    def close_connection(exception):
+        db = getattr(g, '_database', None)
+        if db is not None:
+            db.close()
+
+    def last_id(cursor):
+        return cursor.lastrowid
 
 def init_db():
     with app.app_context():
         db = get_db()
         cursor = db.cursor()
-        
-        # Users Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+
+        if USE_POSTGRES:
+            # PostgreSQL schema
+            statements = [
+                """CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    email TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    phone TEXT,
+                    description TEXT,
+                    profile_pic TEXT,
+                    reg_date TEXT NOT NULL,
+                    role TEXT DEFAULT 'user',
+                    status TEXT DEFAULT 'active',
+                    banned_until TEXT,
+                    ban_reason TEXT
+                )""",
+                """CREATE TABLE IF NOT EXISTS posts (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    title TEXT NOT NULL,
+                    price TEXT,
+                    description TEXT NOT NULL,
+                    contact TEXT NOT NULL,
+                    images TEXT,
+                    post_date TEXT NOT NULL
+                )""",
+                """CREATE TABLE IF NOT EXISTS followers (
+                    id SERIAL PRIMARY KEY,
+                    follower_id INTEGER NOT NULL REFERENCES users(id),
+                    following_id INTEGER NOT NULL REFERENCES users(id),
+                    follow_date TEXT NOT NULL,
+                    UNIQUE(follower_id, following_id)
+                )""",
+                """CREATE TABLE IF NOT EXISTS messages (
+                    id SERIAL PRIMARY KEY,
+                    sender_id INTEGER NOT NULL REFERENCES users(id),
+                    receiver_id INTEGER NOT NULL REFERENCES users(id),
+                    message TEXT NOT NULL,
+                    sent_date TEXT NOT NULL,
+                    is_read INTEGER DEFAULT 0,
+                    reply_to INTEGER REFERENCES messages(id)
+                )""",
+                """CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    type TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    related_user_id INTEGER,
+                    related_post_id INTEGER,
+                    is_read INTEGER DEFAULT 0,
+                    created_date TEXT NOT NULL
+                )""",
+                """CREATE TABLE IF NOT EXISTS categories (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT UNIQUE NOT NULL
+                )""",
+                """CREATE TABLE IF NOT EXISTS post_tags (
+                    post_id INTEGER NOT NULL REFERENCES posts(id),
+                    category_id INTEGER NOT NULL REFERENCES categories(id),
+                    PRIMARY KEY (post_id, category_id)
+                )""",
+                """CREATE TABLE IF NOT EXISTS moderation_actions (
+                    id SERIAL PRIMARY KEY,
+                    moderator_id INTEGER NOT NULL REFERENCES users(id),
+                    target_user_id INTEGER NOT NULL REFERENCES users(id),
+                    action_type TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    duration_hours INTEGER,
+                    created_date TEXT NOT NULL,
+                    expires_date TEXT
+                )""",
+                """CREATE TABLE IF NOT EXISTS warnings (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    moderator_id INTEGER NOT NULL REFERENCES users(id),
+                    reason TEXT NOT NULL,
+                    message TEXT,
+                    created_date TEXT NOT NULL
+                )""",
+                """CREATE TABLE IF NOT EXISTS user_reports (
+                    id SERIAL PRIMARY KEY,
+                    reporter_id INTEGER NOT NULL REFERENCES users(id),
+                    reported_user_id INTEGER NOT NULL REFERENCES users(id),
+                    reported_post_id INTEGER REFERENCES posts(id),
+                    reason TEXT NOT NULL,
+                    description TEXT,
+                    status TEXT DEFAULT 'pending',
+                    created_date TEXT NOT NULL,
+                    resolved_date TEXT,
+                    resolved_by INTEGER REFERENCES users(id)
+                )""",
+                """INSERT INTO categories (name) VALUES ('Crops'),('Livestock'),('Equipment'),('Seeds'),('Fertilizer'),('Other') ON CONFLICT DO NOTHING""",
+                # Indexes
+                "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
+                "CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)",
+                "CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)",
+                "CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)",
+                "CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id)",
+                "CREATE INDEX IF NOT EXISTS idx_reports_status ON user_reports(status)",
+            ]
+            for sql in statements:
+                try:
+                    cursor.execute(sql)
+                except Exception as e:
+                    print(f"Warning init_db: {e}")
+                    db.rollback()
+        else:
+            # SQLite schema
+            cursor.execute("""CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT NOT NULL,
-                password_hash TEXT NOT NULL,
-                phone TEXT,
-                description TEXT,
-                profile_pic TEXT,
-                reg_date TEXT NOT NULL
-            );
-        """)
-        
-        # Posts Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS posts (
+                username TEXT UNIQUE NOT NULL, email TEXT NOT NULL,
+                password_hash TEXT NOT NULL, phone TEXT, description TEXT,
+                profile_pic TEXT, reg_date TEXT NOT NULL,
+                role TEXT DEFAULT 'user', status TEXT DEFAULT 'active',
+                banned_until TEXT, ban_reason TEXT)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS posts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                price TEXT,
-                description TEXT NOT NULL,
-                contact TEXT NOT NULL,
-                images TEXT,
-                post_date TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-        """)
-        
-        # Followers Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS followers (
+                user_id INTEGER NOT NULL, title TEXT NOT NULL, price TEXT,
+                description TEXT NOT NULL, contact TEXT NOT NULL,
+                images TEXT, post_date TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS followers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                follower_id INTEGER NOT NULL,
-                following_id INTEGER NOT NULL,
+                follower_id INTEGER NOT NULL, following_id INTEGER NOT NULL,
                 follow_date TEXT NOT NULL,
                 FOREIGN KEY (follower_id) REFERENCES users(id),
                 FOREIGN KEY (following_id) REFERENCES users(id),
-                UNIQUE(follower_id, following_id)
-            );
-        """)
-        
-        # Messages Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS messages (
+                UNIQUE(follower_id, following_id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sender_id INTEGER NOT NULL,
-                receiver_id INTEGER NOT NULL,
-                message TEXT NOT NULL,
-                sent_date TEXT NOT NULL,
-                is_read INTEGER DEFAULT 0,
-                reply_to INTEGER,
+                sender_id INTEGER NOT NULL, receiver_id INTEGER NOT NULL,
+                message TEXT NOT NULL, sent_date TEXT NOT NULL,
+                is_read INTEGER DEFAULT 0, reply_to INTEGER,
                 FOREIGN KEY (sender_id) REFERENCES users(id),
-                FOREIGN KEY (receiver_id) REFERENCES users(id),
-                FOREIGN KEY (reply_to) REFERENCES messages(id)
-            );
-        """)
-        
-        # Notifications Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS notifications (
+                FOREIGN KEY (receiver_id) REFERENCES users(id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                type TEXT NOT NULL,
-                content TEXT NOT NULL,
-                related_user_id INTEGER,
-                related_post_id INTEGER,
-                is_read INTEGER DEFAULT 0,
+                user_id INTEGER NOT NULL, type TEXT NOT NULL,
+                content TEXT NOT NULL, related_user_id INTEGER,
+                related_post_id INTEGER, is_read INTEGER DEFAULT 0,
                 created_date TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-        """)
-        
-        # Categories Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL
-            );
-        """)
-        
-        # Post Tags Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS post_tags (
-                post_id INTEGER NOT NULL,
-                category_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS post_tags (
+                post_id INTEGER NOT NULL, category_id INTEGER NOT NULL,
                 FOREIGN KEY (post_id) REFERENCES posts(id),
                 FOREIGN KEY (category_id) REFERENCES categories(id),
-                PRIMARY KEY (post_id, category_id)
-            );
-        """)
-        
-        # Insert default categories
-        try:
-            cursor.execute("INSERT OR IGNORE INTO categories (name) VALUES ('Crops'), ('Livestock'), ('Equipment'), ('Seeds'), ('Fertilizer'), ('Other')")
-        except sqlite3.OperationalError as e:
-            print(f"Warning: Could not insert categories: {e}")
-
-        # Ensure moderation columns exist (added by migration, safe to re-run)
-        for col_sql in [
-            "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
-            "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'",
-            "ALTER TABLE users ADD COLUMN banned_until TEXT",
-            "ALTER TABLE users ADD COLUMN ban_reason TEXT",
-        ]:
+                PRIMARY KEY (post_id, category_id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS moderation_actions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                moderator_id INTEGER NOT NULL, target_user_id INTEGER NOT NULL,
+                action_type TEXT NOT NULL, reason TEXT NOT NULL,
+                duration_hours INTEGER, created_date TEXT NOT NULL, expires_date TEXT,
+                FOREIGN KEY (moderator_id) REFERENCES users(id),
+                FOREIGN KEY (target_user_id) REFERENCES users(id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS warnings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, moderator_id INTEGER NOT NULL,
+                reason TEXT NOT NULL, message TEXT, created_date TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (moderator_id) REFERENCES users(id))""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS user_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                reporter_id INTEGER NOT NULL, reported_user_id INTEGER NOT NULL,
+                reported_post_id INTEGER, reason TEXT NOT NULL, description TEXT,
+                status TEXT DEFAULT 'pending', created_date TEXT NOT NULL,
+                resolved_date TEXT, resolved_by INTEGER,
+                FOREIGN KEY (reporter_id) REFERENCES users(id),
+                FOREIGN KEY (reported_user_id) REFERENCES users(id))""")
             try:
-                cursor.execute(col_sql)
-            except Exception:
-                pass  # Column already exists
-
-        # Performance indexes
-        indexes = [
-            "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
-            "CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)",
-            "CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)",
-            "CREATE INDEX IF NOT EXISTS idx_posts_post_date ON posts(post_date)",
-            "CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)",
-            "CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id)",
-            "CREATE INDEX IF NOT EXISTS idx_warnings_user_id ON warnings(user_id)",
-            "CREATE INDEX IF NOT EXISTS idx_mod_actions_date ON moderation_actions(created_date)",
-            "CREATE INDEX IF NOT EXISTS idx_reports_status ON user_reports(status)",
-        ]
-        for idx in indexes:
-            try:
-                cursor.execute(idx)
+                cursor.execute("INSERT OR IGNORE INTO categories (name) VALUES ('Crops'),('Livestock'),('Equipment'),('Seeds'),('Fertilizer'),('Other')")
             except Exception:
                 pass
+            for col_sql in [
+                "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
+                "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'",
+                "ALTER TABLE users ADD COLUMN banned_until TEXT",
+                "ALTER TABLE users ADD COLUMN ban_reason TEXT",
+            ]:
+                try:
+                    cursor.execute(col_sql)
+                except Exception:
+                    pass
+            for idx in [
+                "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
+                "CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)",
+                "CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)",
+                "CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)",
+                "CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id)",
+                "CREATE INDEX IF NOT EXISTS idx_reports_status ON user_reports(status)",
+            ]:
+                try:
+                    cursor.execute(idx)
+                except Exception:
+                    pass
 
         db.commit()
         print("Database initialized.")
