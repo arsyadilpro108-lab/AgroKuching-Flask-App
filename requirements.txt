@@ -1,4 +1,5 @@
-﻿bidict==0.23.1
+﻿# AgroKuching dependencies
+bidict==0.23.1
 blinker==1.9.0
 click==8.3.1
 colorama==0.4.6
