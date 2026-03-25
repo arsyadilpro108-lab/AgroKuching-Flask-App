@@ -72,7 +72,8 @@ if USE_POSTGRES:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None or db.closed:
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            # Use sslmode=disable for internal Render connections (same datacenter)
+            conn = psycopg2.connect(DATABASE_URL, sslmode='disable')
             conn.autocommit = False
             db = g._database = PgWrapper(conn)
         return db
