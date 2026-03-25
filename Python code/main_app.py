@@ -34,7 +34,6 @@ print(f"HTML code exists: {os.path.exists(os.path.join(ROOT_DIR, 'HTML code'))}"
 print(f"JS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'JS code'))}")
 print(f"CSS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'CSS code'))}")
 
-# Use eventlet on Render (Postgres), threading locally (SQLite)
 _async_mode = 'eventlet' if USE_POSTGRES else 'threading'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logger=False, engineio_logger=False)
 
@@ -73,7 +72,7 @@ if USE_POSTGRES:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None or db.closed:
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
             conn.autocommit = False
             db = g._database = PgWrapper(conn)
         return db
