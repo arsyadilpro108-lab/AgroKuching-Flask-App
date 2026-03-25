@@ -43,12 +43,17 @@ if USE_POSTGRES:
     import psycopg2
     import psycopg2.extras
 
+    # Ensure SSL is in the connection string directly
+    _db_url = DATABASE_URL
+    if 'sslmode' not in _db_url:
+        _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=require'
+
     # Restore real SSL module so psycopg2 works under eventlet
     try:
         import eventlet.patcher
         _real_ssl = eventlet.patcher.original('ssl')
-        import sys
-        sys.modules['ssl'] = _real_ssl
+        import sys as _sys
+        _sys.modules['ssl'] = _real_ssl
     except Exception:
         pass
 
@@ -81,7 +86,7 @@ if USE_POSTGRES:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None or db.closed:
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            conn = psycopg2.connect(_db_url)
             conn.autocommit = False
             db = g._database = PgWrapper(conn)
         return db
