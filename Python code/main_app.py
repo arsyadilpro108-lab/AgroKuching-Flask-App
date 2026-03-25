@@ -34,7 +34,7 @@ print(f"HTML code exists: {os.path.exists(os.path.join(ROOT_DIR, 'HTML code'))}"
 print(f"JS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'JS code'))}")
 print(f"CSS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'CSS code'))}")
 
-_async_mode = 'eventlet' if USE_POSTGRES else 'threading'
+_async_mode = 'threading'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logger=False, engineio_logger=False)
 
 # --- Database Setup ---
