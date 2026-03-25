@@ -43,6 +43,15 @@ if USE_POSTGRES:
     import psycopg2
     import psycopg2.extras
 
+    # Restore real SSL module so psycopg2 works under eventlet
+    try:
+        import eventlet.patcher
+        _real_ssl = eventlet.patcher.original('ssl')
+        import sys
+        sys.modules['ssl'] = _real_ssl
+    except Exception:
+        pass
+
     class PgWrapper:
         """Wraps a psycopg2 connection to accept ? placeholders like SQLite."""
         def __init__(self, conn):
@@ -72,7 +81,7 @@ if USE_POSTGRES:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None or db.closed:
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require', sslrootcert='disable')
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
             conn.autocommit = False
             db = g._database = PgWrapper(conn)
         return db
