@@ -40,31 +40,17 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logge
 # --- Database Setup ---
 
 if USE_POSTGRES:
-    import pg8000.dbapi
-    from urllib.parse import urlparse as _urlparse
-    _pg = _urlparse(DATABASE_URL)
+    import psycopg2
+    import psycopg2.extras
+
+    _db_url = DATABASE_URL
+    if 'sslmode' not in _db_url:
+        _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=require'
 
     def _make_conn():
-        import ssl as _ssl
-        _port = int(_pg.port) if _pg.port else 5432
-        _host = _pg.hostname
-        _db = _pg.path.lstrip('/')
-        _user = _pg.username
-        _pass = _pg.password
-        print(f"Connecting: host={_host}, port={_port}, db={_db}, user={_user}")
-        ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
-        ctx.check_hostname = False
-        ctx.verify_mode = _ssl.CERT_NONE
+        print(f"Connecting with psycopg2 to: {_db_url[:50]}...")
         try:
-            conn = pg8000.dbapi.connect(
-                user=_user,
-                password=_pass,
-                host=_host,
-                port=_port,
-                database=_db,
-                ssl_context=ctx,
-                timeout=10
-            )
+            conn = psycopg2.connect(_db_url, connect_timeout=10)
             print("DB connected!")
             return conn
         except Exception as e:
@@ -72,18 +58,17 @@ if USE_POSTGRES:
             raise
 
     class PgWrapper:
-        """Wraps pg8000 connection, converts ? to %s, returns dict rows."""
+        """Wraps psycopg2 connection, converts ? to %s, returns dict rows."""
         def __init__(self, conn):
             self._conn = conn
-            self._conn.autocommit = False
 
         def execute(self, sql, params=None):
-            cur = self._conn.cursor()
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cur.execute(sql.replace('?', '%s'), params)
-            return _DictCursor(cur)
+            return cur
 
         def cursor(self):
-            return _RawDictCursor(self._conn.cursor())
+            return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         def commit(self):
             self._conn.commit()
@@ -96,37 +81,7 @@ if USE_POSTGRES:
 
         @property
         def closed(self):
-            return self._conn._sock is None
-
-    class _DictCursor:
-        def __init__(self, cur):
-            self._cur = cur
-            self._cols = [d[0] for d in (cur.description or [])]
-
-        def fetchone(self):
-            row = self._cur.fetchone()
-            return dict(zip(self._cols, row)) if row else None
-
-        def fetchall(self):
-            return [dict(zip(self._cols, r)) for r in self._cur.fetchall()]
-
-        def __iter__(self):
-            return iter(self.fetchall())
-
-    class _RawDictCursor:
-        def __init__(self, cur):
-            self._cur = cur
-
-        def execute(self, sql, params=None):
-            self._cur.execute(sql.replace('?', '%s'), params)
-            self._cols = [d[0] for d in (self._cur.description or [])]
-
-        def fetchone(self):
-            row = self._cur.fetchone()
-            return dict(zip(self._cols, row)) if row else None
-
-        def fetchall(self):
-            return [dict(zip(self._cols, r)) for r in self._cur.fetchall()]
+            return self._conn.closed
 
     def get_db():
         db = getattr(g, '_database', None)
@@ -144,7 +99,8 @@ if USE_POSTGRES:
                 pass
 
     def last_id(cursor):
-        return None  # not needed, schema uses SERIAL
+        cursor.execute("SELECT lastval()")
+        return cursor.fetchone()['lastval']
 
 else:
     def get_db():

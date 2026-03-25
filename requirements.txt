@@ -12,7 +12,7 @@ h11==0.16.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
-pg8000==1.31.2
+psycopg2-binary==2.9.10
 PyJWT==2.10.1
 python-dotenv==1.0.0
 python-engineio==4.12.3
