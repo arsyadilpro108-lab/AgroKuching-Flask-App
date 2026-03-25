@@ -40,56 +40,85 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logge
 # --- Database Setup ---
 
 if USE_POSTGRES:
-    import psycopg2
-    import psycopg2.extras
-    import eventlet.tpool
+    import pg8000.dbapi
+    from urllib.parse import urlparse as _urlparse
+    _pg = _urlparse(DATABASE_URL)
 
-    # Ensure SSL is in the connection string directly
-    _db_url = DATABASE_URL
-    if 'sslmode' not in _db_url:
-        _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=require'
-
-    def _make_pg_connection():
-        """Run in a real OS thread via tpool to bypass eventlet SSL patching."""
-        return psycopg2.connect(_db_url, cursor_factory=psycopg2.extras.RealDictCursor)
+    def _make_conn():
+        import ssl as _ssl
+        ctx = _ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = _ssl.CERT_NONE
+        return pg8000.dbapi.connect(
+            user=_pg.username,
+            password=_pg.password,
+            host=_pg.hostname,
+            port=_pg.port or 5432,
+            database=_pg.path.lstrip('/'),
+            ssl_context=ctx
+        )
 
     class PgWrapper:
-        """Wraps a psycopg2 connection to accept ? placeholders like SQLite."""
+        """Wraps pg8000 connection, converts ? to %s, returns dict rows."""
         def __init__(self, conn):
             self._conn = conn
+            self._conn.autocommit = False
 
         def execute(self, sql, params=None):
-            def _exec():
-                cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-                cur.execute(sql.replace('?', '%s'), params)
-                return cur
-            return eventlet.tpool.execute(_exec)
+            cur = self._conn.cursor()
+            cur.execute(sql.replace('?', '%s'), params)
+            return _DictCursor(cur)
 
         def cursor(self):
-            return eventlet.tpool.execute(
-                lambda: self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            )
+            return _RawDictCursor(self._conn.cursor())
 
         def commit(self):
-            eventlet.tpool.execute(self._conn.commit)
+            self._conn.commit()
 
         def rollback(self):
-            eventlet.tpool.execute(self._conn.rollback)
+            self._conn.rollback()
 
         def close(self):
-            eventlet.tpool.execute(self._conn.close)
+            self._conn.close()
 
         @property
         def closed(self):
-            return self._conn.closed
+            return self._conn._sock is None
+
+    class _DictCursor:
+        def __init__(self, cur):
+            self._cur = cur
+            self._cols = [d[0] for d in (cur.description or [])]
+
+        def fetchone(self):
+            row = self._cur.fetchone()
+            return dict(zip(self._cols, row)) if row else None
+
+        def fetchall(self):
+            return [dict(zip(self._cols, r)) for r in self._cur.fetchall()]
+
+        def __iter__(self):
+            return iter(self.fetchall())
+
+    class _RawDictCursor:
+        def __init__(self, cur):
+            self._cur = cur
+
+        def execute(self, sql, params=None):
+            self._cur.execute(sql.replace('?', '%s'), params)
+            self._cols = [d[0] for d in (self._cur.description or [])]
+
+        def fetchone(self):
+            row = self._cur.fetchone()
+            return dict(zip(self._cols, row)) if row else None
+
+        def fetchall(self):
+            return [dict(zip(self._cols, r)) for r in self._cur.fetchall()]
 
     def get_db():
         db = getattr(g, '_database', None)
         if db is None or db.closed:
-            # Use tpool to connect in a real thread, bypassing eventlet SSL patch
-            conn = eventlet.tpool.execute(_make_pg_connection)
-            conn.autocommit = False
-            db = g._database = PgWrapper(conn)
+            db = g._database = PgWrapper(_make_conn())
         return db
 
     @app.teardown_appcontext
@@ -102,8 +131,7 @@ if USE_POSTGRES:
                 pass
 
     def last_id(cursor):
-        cursor.execute("SELECT lastval()")
-        return cursor.fetchone()['lastval']
+        return None  # not needed, schema uses SERIAL
 
 else:
     def get_db():
