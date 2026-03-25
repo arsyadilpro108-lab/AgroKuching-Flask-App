@@ -42,20 +42,16 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logge
 if USE_POSTGRES:
     import psycopg2
     import psycopg2.extras
+    import eventlet.tpool
 
     # Ensure SSL is in the connection string directly
     _db_url = DATABASE_URL
     if 'sslmode' not in _db_url:
         _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=require'
 
-    # Restore real SSL module so psycopg2 works under eventlet
-    try:
-        import eventlet.patcher
-        _real_ssl = eventlet.patcher.original('ssl')
-        import sys as _sys
-        _sys.modules['ssl'] = _real_ssl
-    except Exception:
-        pass
+    def _make_pg_connection():
+        """Run in a real OS thread via tpool to bypass eventlet SSL patching."""
+        return psycopg2.connect(_db_url, cursor_factory=psycopg2.extras.RealDictCursor)
 
     class PgWrapper:
         """Wraps a psycopg2 connection to accept ? placeholders like SQLite."""
@@ -63,21 +59,25 @@ if USE_POSTGRES:
             self._conn = conn
 
         def execute(self, sql, params=None):
-            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur.execute(sql.replace('?', '%s'), params)
-            return cur
+            def _exec():
+                cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(sql.replace('?', '%s'), params)
+                return cur
+            return eventlet.tpool.execute(_exec)
 
         def cursor(self):
-            return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            return eventlet.tpool.execute(
+                lambda: self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            )
 
         def commit(self):
-            self._conn.commit()
+            eventlet.tpool.execute(self._conn.commit)
 
         def rollback(self):
-            self._conn.rollback()
+            eventlet.tpool.execute(self._conn.rollback)
 
         def close(self):
-            self._conn.close()
+            eventlet.tpool.execute(self._conn.close)
 
         @property
         def closed(self):
@@ -86,7 +86,8 @@ if USE_POSTGRES:
     def get_db():
         db = getattr(g, '_database', None)
         if db is None or db.closed:
-            conn = psycopg2.connect(_db_url)
+            # Use tpool to connect in a real thread, bypassing eventlet SSL patch
+            conn = eventlet.tpool.execute(_make_pg_connection)
             conn.autocommit = False
             db = g._database = PgWrapper(conn)
         return db
