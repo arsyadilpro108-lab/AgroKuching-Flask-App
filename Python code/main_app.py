@@ -45,13 +45,17 @@ if USE_POSTGRES:
     _pg = _urlparse(DATABASE_URL)
 
     def _make_conn():
+        import ssl as _ssl
+        ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = _ssl.CERT_NONE
         return pg8000.dbapi.connect(
             user=_pg.username,
             password=_pg.password,
             host=_pg.hostname,
             port=_pg.port or 5432,
             database=_pg.path.lstrip('/'),
-            ssl_context=True
+            ssl_context=ctx
         )
 
     class PgWrapper:

@@ -15,10 +15,12 @@ _initialized = False
 def startup():
     global _initialized
     if not _initialized:
-        _initialized = True
-        init_db()
+        try:
+            init_db()
+            _initialized = True
+        except Exception as e:
+            print(f"init_db error (will retry): {e}")
 
 if __name__ == '__main__':
     init_db()
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
-
