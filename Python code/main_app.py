@@ -46,17 +46,24 @@ if USE_POSTGRES:
 
     def _make_conn():
         import ssl as _ssl
+        print(f"Connecting to DB: host={_pg.hostname}, port={_pg.port}, db={_pg.path.lstrip('/')}, user={_pg.username}")
         ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
         ctx.check_hostname = False
         ctx.verify_mode = _ssl.CERT_NONE
-        return pg8000.dbapi.connect(
-            user=_pg.username,
-            password=_pg.password,
-            host=_pg.hostname,
-            port=_pg.port or 5432,
-            database=_pg.path.lstrip('/'),
-            ssl_context=ctx
-        )
+        try:
+            conn = pg8000.dbapi.connect(
+                user=_pg.username,
+                password=_pg.password,
+                host=_pg.hostname,
+                port=_pg.port or 5432,
+                database=_pg.path.lstrip('/'),
+                ssl_context=ctx
+            )
+            print("DB connection successful!")
+            return conn
+        except Exception as e:
+            print(f"DB connection failed: {type(e).__name__}: {e}")
+            raise
 
     class PgWrapper:
         """Wraps pg8000 connection, converts ? to %s, returns dict rows."""
