@@ -47,15 +47,23 @@ if USE_POSTGRES:
     if 'sslmode' not in _db_url:
         _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=require'
 
+    # Try internal hostname (faster, no SSL needed on Render's private network)
+    _internal_url = _db_url.replace(
+        'dpg-d4r69rchg0os738l7b00-a.singapore-postgres.render.com',
+        'dpg-d4r69rchg0os738l7b00-a'
+    ).replace('sslmode=require', 'sslmode=disable')
+
     def _make_conn():
-        print(f"Connecting with psycopg2 to: {_db_url[:50]}...")
-        try:
-            conn = psycopg2.connect(_db_url, connect_timeout=10)
-            print("DB connected!")
-            return conn
-        except Exception as e:
-            print(f"DB failed: {type(e).__name__}: {e}")
-            raise
+        # Try internal first, fall back to external
+        for url, label in [(_internal_url, 'internal'), (_db_url, 'external')]:
+            try:
+                print(f"Trying {label} connection...")
+                conn = psycopg2.connect(url, connect_timeout=10)
+                print(f"DB connected via {label}!")
+                return conn
+            except Exception as e:
+                print(f"{label} failed: {e}")
+        raise Exception("All DB connection attempts failed")
 
     class PgWrapper:
         """Wraps psycopg2 connection, converts ? to %s, returns dict rows."""
