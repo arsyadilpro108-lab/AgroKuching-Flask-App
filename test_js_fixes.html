@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JS Fixes</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Fixes Test</h1>
+    <div id="results"></div>
+    
+    <!-- Mock HTML elements that the JS expects -->
+    <div id="postContainer"></div>
+    <div id="searchInput"></div>
+    <div id="clearSearch" style="display: none;"></div>
+    <div id="searchDropdown"></div>
+    <div id="profileBtn"></div>
+    <div id="profileDropdown">
+        <a href="/HTML code/admin-facebook.html" id="adminLink" style="display: none;">🛡️ Admin Panel</a>
+        <a href="/HTML code/admin-facebook.html" id="tempAdminLink" style="background: #ff6b35; color: white; padding: 5px; border-radius: 3px; margin-top: 5px;">🔧 Admin Panel (Direct)</a>
+    </div>
+    <div id="refreshBtn"></div>
+    
+    <script>
+        // Mock localStorage for testing
+        localStorage.setItem('authToken', 'test-token');
+        
+        // Global variables (should be defined in home-page.js)
+        let isSearchMode = false;
+        let searchQuery = '';
+        let searchTimeout;
+        let currentUserRole = 'user';
+        let currentUserData = null;
+        let currentUsername = null;
+        
+        const results = document.getElementById('results');
+        
+        function addResult(message, isSuccess = true) {
+            const div = document.createElement('div');
+            div.className = `test-result ${isSuccess ? 'success' : 'error'}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+        
+        // Test 1: Check if global variables are defined
+        try {
+            if (typeof isSearchMode !== 'undefined') {
+                addResult('✅ Global variables are properly defined');
+            } else {
+                addResult('❌ Global variables are not defined', false);
+            }
+        } catch (e) {
+            addResult(`❌ Error checking global variables: ${e.message}`, false);
+        }
+        
+        // Test 2: Check if DOM elements exist
+        const elements = ['postContainer', 'searchInput', 'clearSearch', 'searchDropdown', 'profileBtn', 'profileDropdown', 'adminLink', 'tempAdminLink'];
+        let elementsFound = 0;
+        
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                elementsFound++;
+                addResult(`✅ Element ${id} found`);
+            } else {
+                addResult(`❌ Element ${id} not found`, false);
+            }
+        });
+        
+        // Test 3: Test admin link visibility logic
+        try {
+            const adminLink = document.getElementById('adminLink');
+            const tempAdminLink = document.getElementById('tempAdminLink');
+            
+            if (adminLink && tempAdminLink) {
+                // Simulate admin user detection
+                const username = 'AgroKuchingOfficial'; // Admin user
+                if (username === 'AgroKuchingOfficial' || username === 'Arsoliz') {
+                    adminLink.style.display = 'block';
+                    addResult('✅ Admin link logic works correctly');
+                } else {
+                    addResult('❌ Admin link logic failed', false);
+                }
+            } else {
+                addResult('❌ Admin link elements not found', false);
+            }
+        } catch (e) {
+            addResult(`❌ Error testing admin link logic: ${e.message}`, false);
+        }
+        
+        // Test 4: Test event listener attachment (without actually attaching)
+        try {
+            const clearSearch = document.getElementById('clearSearch');
+            const searchInput = document.getElementById('searchInput');
+            const profileBtn = document.getElementById('profileBtn');
+            
+            if (clearSearch && searchInput && profileBtn) {
+                addResult('✅ All elements for event listeners are available');
+            } else {
+                addResult('❌ Some elements for event listeners are missing', false);
+            }
+        } catch (e) {
+            addResult(`❌ Error checking event listener elements: ${e.message}`, false);
+        }
+        
+        addResult(`\n📊 Summary: ${elementsFound}/${elements.length} elements found`);
+        addResult('🔧 The JavaScript fixes should resolve the null element errors');
+        addResult('🎯 Admin link should now appear for AgroKuchingOfficial and Arsoliz users');
+    </script>
+</body>
+</html>

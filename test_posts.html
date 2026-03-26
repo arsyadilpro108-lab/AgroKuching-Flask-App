@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Posts API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .post { border: 1px solid #ccc; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Posts API Test</h1>
+    <button onclick="testPostsAPI()">Test Posts API</button>
+    <div id="results"></div>
+
+    <script>
+        async function testPostsAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Loading posts...</p>';
+            
+            try {
+                const response = await fetch('/api/posts');
+                
+                if (response.ok) {
+                    const posts = await response.json();
+                    
+                    resultsDiv.innerHTML = `
+                        <p class="success">✅ Posts API working! Found ${posts.length} posts</p>
+                    `;
+                    
+                    if (posts.length > 0) {
+                        resultsDiv.innerHTML += '<h3>Sample Posts:</h3>';
+                        posts.slice(0, 3).forEach(post => {
+                            resultsDiv.innerHTML += `
+                                <div class="post">
+                                    <h4>${post.title}</h4>
+                                    <p><strong>Author:</strong> ${post.author_username || 'Unknown'}</p>
+                                    <p><strong>Price:</strong> ${post.price || 'N/A'}</p>
+                                    <p><strong>Description:</strong> ${post.description}</p>
+                                    <p><strong>Date:</strong> ${post.post_date}</p>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        resultsDiv.innerHTML += '<p>No posts found in database</p>';
+                    }
+                } else {
+                    const errorText = await response.text();
+                    resultsDiv.innerHTML = `<p class="error">❌ API Error: ${response.status} - ${errorText}</p>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-test on page load
+        window.onload = testPostsAPI;
+    </script>
+</body>
+</html>

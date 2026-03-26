@@ -1,0 +1,184 @@
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ * Serving Flask app 'main_app'
+ * Debug mode: on
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.
+ROOT_DIR: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2
+Current file: C:\Users\Amira Satirawaty\Desktop\fs4a\AgroKuching\AgroKuching 2\Python code\main_app.py
+Using SQLite
+HTML code exists: True
+JS code exists: True
+CSS code exists: True
+Database initialized.

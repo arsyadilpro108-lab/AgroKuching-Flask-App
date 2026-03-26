@@ -1,3 +1,10 @@
 {
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "p2p-live-share.terminal.dimensionsSource": "minimum",
+    "p2p-live-share.trysteroConfig": {
+    },
+    "p2p-live-share.signalingStrategy": "mqtt",
+    "p2p-live-share.signalingServer": "wss://test.mosquitto.org"
 }
+
+

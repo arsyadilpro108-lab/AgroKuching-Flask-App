@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel Access Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .info {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Admin Panel Access Test</h1>
+        
+        <div class="info">
+            <h3>Quick Access Options:</h3>
+            <p>If you're logged in as AgroKuchingOfficial, try these direct links:</p>
+        </div>
+        
+        <a href="/HTML code/admin-panel.html" class="btn">🛡️ Direct Admin Panel Access</a>
+        <a href="/HTML code/home-page.html" class="btn">🏠 Back to Home</a>
+        <a href="/HTML code/profile.html?user=AgroKuchingOfficial" class="btn">👤 Profile Page</a>
+        
+        <div id="testResults"></div>
+        
+        <h3>Troubleshooting Steps:</h3>
+        <ol>
+            <li><strong>Check Login Status:</strong> Make sure you're logged in as AgroKuchingOfficial</li>
+            <li><strong>Check Role:</strong> Click the button below to verify your role</li>
+            <li><strong>Clear Cache:</strong> Try refreshing the page or clearing browser cache</li>
+            <li><strong>Direct Access:</strong> Use the direct admin panel link above</li>
+        </ol>
+        
+        <button onclick="checkUserRole()" class="btn">🔍 Check My Role & Status</button>
+        <button onclick="showAdminLink()" class="btn">🔧 Force Show Admin Link</button>
+    </div>
+
+    <script>
+        const TOKEN_KEY = 'authToken';
+        
+        function getToken() {
+            return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+        }
+        
+        async function checkUserRole() {
+            const resultsDiv = document.getElementById('testResults');
+            const token = getToken();
+            
+            if (!token) {
+                resultsDiv.innerHTML = '<div class="test-result error">❌ Not logged in. Please login first.</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML = `
+                        <div class="test-result success">
+                            ✅ <strong>User Info:</strong><br>
+                            Username: ${data.username}<br>
+                            Role: ${data.role || 'Not set'}<br>
+                            Status: ${data.status || 'Not set'}<br>
+                            User ID: ${data.id}
+                        </div>
+                    `;
+                    
+                    if (data.role === 'admin') {
+                        resultsDiv.innerHTML += '<div class="test-result success">🎉 You have admin privileges! The admin panel should be visible.</div>';
+                    } else {
+                        resultsDiv.innerHTML += '<div class="test-result error">❌ You do not have admin privileges. Role: ' + (data.role || 'none') + '</div>';
+                    }
+                } else {
+                    resultsDiv.innerHTML = '<div class="test-result error">❌ Failed to get user info. Status: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="test-result error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        function showAdminLink() {
+            // Force show admin link on current page
+            const adminLinks = document.querySelectorAll('#adminLink');
+            adminLinks.forEach(link => {
+                if (link) {
+                    link.style.display = 'block';
+                }
+            });
+            
+            // Also try to add admin link if it doesn't exist
+            const nav = document.querySelector('.nav-links');
+            if (nav && !document.getElementById('adminLink')) {
+                const adminLink = document.createElement('a');
+                adminLink.href = '/HTML code/admin-panel.html';
+                adminLink.id = 'adminLink';
+                adminLink.innerHTML = '🛡️ Admin Panel';
+                adminLink.className = 'btn';
+                nav.appendChild(adminLink);
+            }
+            
+            document.getElementById('testResults').innerHTML = '<div class="test-result success">🔧 Attempted to force show admin links on this page.</div>';
+        }
+        
+        // Auto-check role on page load
+        window.onload = function() {
+            checkUserRole();
+        };
+    </script>
+</body>
+</html>
