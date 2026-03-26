@@ -44,9 +44,9 @@ if USE_POSTGRES:
     import psycopg2.extras
 
     _db_url = DATABASE_URL
-    # Use sslmode=prefer - tries SSL first, falls back to non-SSL
+    # Internal Render URLs don't need SSL
     if 'sslmode' not in _db_url:
-        _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=prefer'
+        _db_url += ('&' if '?' in _db_url else '?') + 'sslmode=disable'
 
     def _make_conn():
         print(f"Connecting to DB...")
