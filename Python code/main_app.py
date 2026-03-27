@@ -1,6 +1,10 @@
 import sqlite3
 import os
 import jwt
+import re as _re
+import time as _time_module
+import random
+from collections import defaultdict
 from flask import Flask, jsonify, request, g, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -36,6 +40,61 @@ print(f"CSS code exists: {os.path.exists(os.path.join(ROOT_DIR, 'CSS code'))}")
 
 _async_mode = 'threading'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_async_mode, logger=False, engineio_logger=False)
+
+# ── Security ──────────────────────────────────────────────────────────────────
+
+# Rate limiter: {key: [timestamp, ...]}
+_rate_store = defaultdict(list)
+
+def rate_limit(key, max_requests=10, window=60):
+    """Return True if request is allowed, False if rate limited."""
+    now = _time_module.time()
+    timestamps = _rate_store[key]
+    # Remove old entries outside window
+    _rate_store[key] = [t for t in timestamps if now - t < window]
+    if len(_rate_store[key]) >= max_requests:
+        return False
+    _rate_store[key].append(now)
+    return True
+
+def get_client_ip():
+    return request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    # Only set CSP on HTML responses to avoid breaking API
+    if 'text/html' in response.content_type:
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self' wss: ws:; "
+            "font-src 'self';"
+        )
+    return response
+
+def sanitize(value, max_len=500):
+    """Strip whitespace and limit length. Parameterized queries handle SQL injection."""
+    if value is None:
+        return ''
+    return str(value).strip()[:max_len]
+
+def validate_username(username):
+    """Only allow alphanumeric, underscore, hyphen. 3-30 chars."""
+    return bool(_re.match(r'^[a-zA-Z0-9_\-]{3,30}$', username))
+
+def validate_email(email):
+    return bool(_re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email))
+
+def validate_password(password):
+    """Min 6 chars."""
+    return len(password) >= 6
 
 # --- Database Setup ---
 
@@ -326,6 +385,8 @@ def init_db():
         db.commit()
         print("Database initialized.")
 
+# --- Input Sanitization (defined in Security section above) ---
+
 # --- Authentication (JWT) ---
 
 def token_required(f):
@@ -362,13 +423,23 @@ def token_required(f):
 # Authentication
 @app.route('/api/register', methods=['POST'])
 def register():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
-    email = data.get('email')
+    ip = get_client_ip()
+    if not rate_limit(f'register:{ip}', max_requests=5, window=300):
+        return jsonify({'message': 'Too many registration attempts. Please wait 5 minutes.'}), 429
+
+    data = request.json or {}
+    username = sanitize(data.get('username'), 30)
+    password = str(data.get('password', ''))[:200]
+    email = sanitize(data.get('email'), 200).lower()
 
     if not all([username, password, email]):
         return jsonify({'message': 'Missing username, email, or password'}), 400
+    if not validate_username(username):
+        return jsonify({'message': 'Username must be 3-30 characters, letters/numbers/underscore/hyphen only'}), 400
+    if not validate_email(email):
+        return jsonify({'message': 'Invalid email address'}), 400
+    if not validate_password(password):
+        return jsonify({'message': 'Password must be at least 6 characters'}), 400
 
     password_hash = generate_password_hash(password)
     reg_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -397,9 +468,13 @@ def register():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
+    ip = get_client_ip()
+    if not rate_limit(f'login:{ip}', max_requests=10, window=60):
+        return jsonify({'message': 'Too many login attempts. Please wait a minute.'}), 429
+
+    data = request.json or {}
+    username = sanitize(data.get('username'), 50)
+    password = str(data.get('password', ''))[:200]
 
     if not username or not password:
         return jsonify({'message': 'Missing username or password'}), 400
@@ -478,6 +553,122 @@ def reset_password():
         db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user['id']))
         db.commit()
         
+        return jsonify({'message': 'Password reset successfully'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+# --- Password Reset Flow (Facebook-style) ---
+import random, time as _time
+_reset_codes = {}  # {email: {'code': '123456', 'expires': timestamp, 'username': '...'}}
+
+@app.route('/api/find-account', methods=['POST'])
+def find_account():
+    ip = get_client_ip()
+    if not rate_limit(f'find-account:{ip}', max_requests=10, window=60):
+        return jsonify({'message': 'Too many attempts. Please wait.'}), 429
+    data = request.json or {}
+    search = str(data.get('search', '')).strip()
+    if not search:
+        return jsonify({'message': 'Please enter your email or username'}), 400
+    db = get_db()
+    user = db.execute(
+        "SELECT id, username, email, profile_pic FROM users WHERE email = ? OR username = ?",
+        (search, search)
+    ).fetchone()
+    if not user:
+        return jsonify({'message': 'No account found with that email or username'}), 404
+    return jsonify({
+        'username': user['username'],
+        'email': user['email'],
+        'profile_pic': user['profile_pic'] or ''
+    }), 200
+
+@app.route('/api/send-reset-code', methods=['POST'])
+def send_reset_code():
+    ip = get_client_ip()
+    if not rate_limit(f'reset:{ip}', max_requests=5, window=300):
+        return jsonify({'message': 'Too many reset attempts. Please wait 5 minutes.'}), 429
+    data = request.json or {}
+    email = str(data.get('email', '')).strip()
+    username = str(data.get('username', '')).strip()
+    if not email or not username:
+        return jsonify({'message': 'Missing email or username'}), 400
+    db = get_db()
+    user = db.execute(
+        "SELECT id FROM users WHERE email = ? AND username = ?", (email, username)
+    ).fetchone()
+    if not user:
+        return jsonify({'message': 'Account not found'}), 404
+    code = str(random.randint(100000, 999999))
+    _reset_codes[email] = {'code': code, 'expires': _time.time() + 600, 'username': username}
+
+    # Send email
+    try:
+        import smtplib, ssl
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        mail_server = os.environ.get('MAIL_SERVER', 'smtpout.secureserver.net')
+        mail_port = int(os.environ.get('MAIL_PORT', 465))
+        mail_user = os.environ.get('MAIL_USERNAME', '')
+        mail_pass = os.environ.get('MAIL_PASSWORD', '')
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'AgroKuching - Password Reset Code'
+        msg['From'] = f'AgroKuching <{mail_user}>'
+        msg['To'] = email
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;background:#f9f9f9;border-radius:8px;">
+          <img src="https://www.agrokuching.com/pictures/logo.png" alt="AgroKuching" style="width:60px;margin-bottom:16px;">
+          <h2 style="color:#2d7a2d;">Password Reset</h2>
+          <p>Hi <strong>{username}</strong>,</p>
+          <p>Your password reset code is:</p>
+          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#2d7a2d;padding:16px;background:#fff;border-radius:6px;text-align:center;margin:16px 0;">{code}</div>
+          <p style="color:#666;font-size:13px;">This code expires in 10 minutes. If you didn't request this, ignore this email.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+          <p style="color:#aaa;font-size:12px;">AgroKuching &mdash; Promoting Made Easier</p>
+        </div>
+        """
+        msg.attach(MIMEText(html, 'html'))
+
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP_SSL(mail_server, mail_port, context=ctx) as server:
+            server.login(mail_user, mail_pass)
+            server.sendmail(mail_user, email, msg.as_string())
+
+        return jsonify({'message': 'Code sent to your email'}), 200
+    except Exception as e:
+        print(f"Email error: {e}")
+        return jsonify({'message': f'Failed to send email: {str(e)}'}), 500
+
+@app.route('/api/reset-password-verified', methods=['POST'])
+def reset_password_verified():
+    data = request.json or {}
+    username = str(data.get('username', '')).strip()
+    email = str(data.get('email', '')).strip()
+    new_password = str(data.get('new_password', ''))
+    code = str(data.get('code', '')).strip()
+    if not all([username, email, new_password, code]):
+        return jsonify({'message': 'All fields are required'}), 400
+    if len(new_password) < 6:
+        return jsonify({'message': 'Password must be at least 6 characters'}), 400
+    stored = _reset_codes.get(email)
+    if not stored or stored['code'] != code or stored['username'] != username:
+        return jsonify({'message': 'Invalid or expired code'}), 400
+    if _time.time() > stored['expires']:
+        del _reset_codes[email]
+        return jsonify({'message': 'Code has expired. Please request a new one'}), 400
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE email = ? AND username = ?", (email, username)).fetchone()
+    if not user:
+        return jsonify({'message': 'Account not found'}), 404
+    try:
+        db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                   (generate_password_hash(new_password), user['id']))
+        db.commit()
+        del _reset_codes[email]
         return jsonify({'message': 'Password reset successfully'}), 200
     except Exception as e:
         db.rollback()

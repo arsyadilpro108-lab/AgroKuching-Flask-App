@@ -52,7 +52,6 @@ document.getElementById('continueBtn').addEventListener('click', async () => {
         const data = await response.json();
         
         if (response.ok) {
-            verificationCode = data.code; // In production, this would be sent via email
             showStep(3);
             setupCodeInputs();
         } else {
@@ -78,13 +77,10 @@ document.getElementById('verifyBtn').addEventListener('click', () => {
         return;
     }
     
-    if (code === verificationCode) {
-        showStep(4);
-        setupPasswordToggles();
-    } else {
-        showError(errorMsg, 'Invalid code. Please try again.');
-        clearCodeInputs();
-    }
+    // Store code and proceed — server will verify on final reset
+    verificationCode = code;
+    showStep(4);
+    setupPasswordToggles();
 });
 
 // Resend code
@@ -104,7 +100,6 @@ document.getElementById('resendCode').addEventListener('click', async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            verificationCode = data.code;
             alert('New code sent to your email!');
         }
     } catch (error) {

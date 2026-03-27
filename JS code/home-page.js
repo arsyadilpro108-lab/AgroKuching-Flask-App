@@ -337,6 +337,7 @@ async function handleHomePageLogic() {
         .catch(() => { if (profileBtn) profileBtn.innerHTML = '👤'; });
 
     // Check admin role independently — runs regardless of profile fetch result
+    let isAdmin = false;
     const token = getToken();
     if (token) {
         fetch('/api/admin/check', {
@@ -345,6 +346,7 @@ async function handleHomePageLogic() {
         .then(r => r.json())
         .then(adminData => {
             if (adminData && adminData.is_admin) {
+                isAdmin = true;
                 const adminLink = document.getElementById('adminLink');
                 if (adminLink) {
                     adminLink.style.display = 'block';
@@ -1016,15 +1018,23 @@ async function handleHomePageLogic() {
 
         // Simple menu for now - just show for post authors
         const isAuthor = currentUsername && currentUsername === post.author_username;
-        const menuHTML = isAuthor ? `
+        const authorOptions = isAuthor ? `
+            <button class="edit-option" data-post-id="${post.id}">✏️ Edit</button>
+            <button class="delete-option" data-post-id="${post.id}">🗑️ Delete</button>
+        ` : '';
+        const adminOptions = isAdmin ? `
+            <button class="admin-remove-option" data-post-id="${post.id}">🚫 Remove Post</button>
+        ` : '';
+        const menuHTML = `
             <div class="post-menu-container">
                 <button class="post-menu-btn" data-post-id="${post.id}">⋮</button>
                 <div class="post-menu-dropdown">
-                    <button class="edit-option" data-post-id="${post.id}">✏️ Edit</button>
-                    <button class="delete-option" data-post-id="${post.id}">🗑️ Delete</button>
+                    ${authorOptions}
+                    <button class="report-option" data-post-id="${post.id}">🚩 Report</button>
+                    ${adminOptions}
                 </div>
             </div>
-        ` : '';
+        `;
 
         // DM button (only show if not own post)
         const dmButton = isAuthor ? '' : `<button class="dm-user-btn" data-username="${post.author_username}">💬 DM User</button>`;
@@ -1105,6 +1115,47 @@ async function handleHomePageLogic() {
                             } catch (error) {
                                 console.error('Failed to delete post:', error);
                                 alert('Failed to delete post: ' + error.message);
+                            }
+                        }
+                    });
+                }
+
+                // Report button
+                const reportBtn = menuDropdown.querySelector('.report-option');
+                if (reportBtn) {
+                    reportBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        menuDropdown.classList.remove('show');
+                        const reason = prompt('Why are you reporting this post?\n(spam, inappropriate, misleading, other)');
+                        if (reason) {
+                            try {
+                                await fetchWithAuth(`/api/posts/${post.id}/report`, {
+                                    method: 'POST',
+                                    body: JSON.stringify({ reason, description: '' })
+                                });
+                                alert('Post reported. Thank you for keeping AgroKuching safe.');
+                            } catch (error) {
+                                alert('Failed to report post: ' + error.message);
+                            }
+                        }
+                    });
+                }
+
+                // Admin remove button
+                const adminRemoveBtn = menuDropdown.querySelector('.admin-remove-option');
+                if (adminRemoveBtn) {
+                    adminRemoveBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        menuDropdown.classList.remove('show');
+                        if (confirm(`Remove this post by ${post.author_username}?`)) {
+                            try {
+                                await fetchWithAuth(`/api/admin/posts/${post.id}`, {
+                                    method: 'DELETE'
+                                });
+                                postCard.remove();
+                                showNotification('Post removed.', 'success');
+                            } catch (error) {
+                                alert('Failed to remove post: ' + error.message);
                             }
                         }
                     });
