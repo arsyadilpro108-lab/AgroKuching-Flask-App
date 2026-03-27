@@ -871,6 +871,9 @@ def create_post(current_user):
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     try:
+        page = int(request.args.get('page', 1))
+        limit = int(request.args.get('limit', 10))
+        offset = (page - 1) * limit
         db = get_db()
         posts_rows = db.execute(
             """
@@ -878,18 +881,19 @@ def get_posts():
             FROM posts p
             JOIN users u ON p.user_id = u.id
             ORDER BY p.post_date DESC
-            """
+            LIMIT ? OFFSET ?
+            """, (limit, offset)
         ).fetchall()
-        
+        total = db.execute("SELECT COUNT(*) as cnt FROM posts").fetchone()['cnt']
         posts = []
         for row in posts_rows:
             post = dict(row)
-            post['images'] = json.loads(post['images'])
+            post['images'] = json.loads(post['images']) if post.get('images') else []
             posts.append(post)
-        
-        response = jsonify(posts)
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
-        return response, 200
+        resp = jsonify({'posts': posts, 'page': page, 'limit': limit, 'total': total, 'has_more': offset + limit < total})
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        resp.headers['Pragma'] = 'no-cache'
+        return resp, 200
     except Exception as e:
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
@@ -1676,7 +1680,7 @@ def admin_delete_post(current_user, post_id):
         if not admin_check or admin_check['role'] != 'admin':
             return jsonify({'message': 'Admin access required'}), 403
         
-        data = request.json
+        data = request.get_json(silent=True) or {}
         reason = data.get('reason', 'Deleted by admin')
         
         # Get post details before deletion
@@ -1700,6 +1704,7 @@ def admin_delete_post(current_user, post_id):
         return jsonify({'message': 'Post deleted successfully', 'reason': reason}), 200
     except Exception as e:
         db.rollback()
+        print(f"Admin delete post error: {type(e).__name__}: {e}")
         return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
 @app.route('/api/posts/<int:post_id>/report', methods=['POST'])

@@ -833,7 +833,7 @@ async function handleHomePageLogic() {
             closeModal(postModal);
             postForm.reset();
             imagePreview.innerHTML = "";
-            loadPosts();
+            hasMorePosts = true; currentPage = 1; loadPosts(1);
         } catch (error) {
             console.error("Failed to create post:", error);
             alert(`Error: ${error.message}`);
@@ -915,7 +915,7 @@ async function handleHomePageLogic() {
             closeModal(editModal);
             editForm.reset();
             editImagePreview.innerHTML = "";
-            loadPosts(); // Reload posts to show updated version
+            hasMorePosts = true; currentPage = 1; loadPosts(1);
         } catch (error) {
             console.error("Failed to update post:", error);
             alert(`Error: ${error.message}`);
@@ -942,45 +942,89 @@ async function handleHomePageLogic() {
 
     // Load All Posts
 
-    async function loadPosts() {
-        console.log('🔄 Starting loadPosts function...');
-        
-        try {
-            const response = await fetch('/api/posts?t=' + Date.now());
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const postsData = await response.json();
-            console.log('✅ Successfully loaded', postsData.length, 'posts');
-            
-            // Clear container and render posts
-            postContainer.innerHTML = "";
-            
-            if (postsData.length === 0) {
-                postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
-            } else {
-                console.log('🎨 Rendering posts...');
-                postsData.forEach((post, index) => {
-                    console.log(`Rendering post ${index + 1}: ${post.title}`);
-                    const postCard = createPostElement(post);
-                    postContainer.appendChild(postCard);
-                });
-                console.log('✅ All posts rendered successfully');
-            }
-            
-        } catch (error) {
-            console.error('❌ Failed to load posts:', error);
-            postContainer.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <p style="color: red; margin-bottom: 10px;">Failed to load posts</p>
-                    <p style="color: #666; font-size: 14px;">Error: ${error.message}</p>
-                    <button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh Page</button>
+    // ── Infinite Scroll Post Loading (Facebook/Reddit style) ─────────────────
+    let currentPage = 1;
+    let isLoadingPosts = false;
+    let hasMorePosts = true;
+
+    function showSkeletons(count = 3) {
+        for (let i = 0; i < count; i++) {
+            const sk = document.createElement('div');
+            sk.className = 'post-card skeleton-card';
+            sk.innerHTML = `
+                <div class="skeleton-header">
+                    <div class="skeleton-avatar"></div>
+                    <div class="skeleton-lines">
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line xshort"></div>
+                    </div>
                 </div>
+                <div class="skeleton-line full"></div>
+                <div class="skeleton-line medium"></div>
+                <div class="skeleton-image"></div>
             `;
+            postContainer.appendChild(sk);
         }
     }
+
+    function removeSkeletons() {
+        postContainer.querySelectorAll('.skeleton-card').forEach(s => s.remove());
+    }
+
+    async function loadPosts(page = 1) {
+        if (isLoadingPosts || !hasMorePosts) return;
+        isLoadingPosts = true;
+
+        if (page === 1) postContainer.innerHTML = '';
+        showSkeletons(3);
+
+        try {
+            const response = await fetch(`/api/posts?page=${page}&limit=10&_=${Date.now()}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+
+            removeSkeletons();
+
+            if (page === 1 && data.posts.length === 0) {
+                postContainer.innerHTML = '<p style="text-align:center;padding:40px;color:#666;">No posts yet. Be the first to post!</p>';
+                hasMorePosts = false;
+                return;
+            }
+
+            data.posts.forEach(post => {
+                postContainer.appendChild(createPostElement(post));
+            });
+
+            hasMorePosts = data.has_more;
+            currentPage = page;
+
+            if (!hasMorePosts) {
+                const end = document.createElement('p');
+                end.style.cssText = 'text-align:center;padding:24px;color:#aaa;font-size:14px;';
+                end.textContent = "You've seen all posts";
+                postContainer.appendChild(end);
+            }
+        } catch (error) {
+            removeSkeletons();
+            if (page === 1) {
+                postContainer.innerHTML = `<div style="text-align:center;padding:40px;"><p style="color:red;">Failed to load posts</p><button onclick="window.location.reload()" style="margin-top:15px;padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;">Retry</button></div>`;
+            }
+        } finally {
+            isLoadingPosts = false;
+        }
+    }
+
+    // Infinite scroll observer
+    const scrollSentinel = document.createElement('div');
+    scrollSentinel.id = 'scroll-sentinel';
+    postContainer.after(scrollSentinel);
+
+    const scrollObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !isSearchMode && hasMorePosts && !isLoadingPosts) {
+            loadPosts(currentPage + 1);
+        }
+    }, { rootMargin: '200px' });
+    scrollObserver.observe(scrollSentinel);
     
     // Render a Single Post Card
     function createPostElement(post) {
@@ -1206,28 +1250,44 @@ async function handleHomePageLogic() {
         });
     }
 
-    // Refresh button
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', async () => {
-            refreshBtn.classList.add('spinning');
-            console.log('Manual refresh triggered');
-            
-            try {
-                await loadPosts();
-                showNotification('Posts refreshed!', 'success');
-            } catch (error) {
-                console.error('Manual refresh failed:', error);
-                showNotification('Failed to refresh posts', 'error');
-            } finally {
-                setTimeout(() => {
-                    refreshBtn.classList.remove('spinning');
-                }, 1000);
+    // Pull-to-refresh for mobile (scroll up past top triggers page reload)
+    let pullStartY = 0;
+    let isPulling = false;
+    let pullIndicator = null;
+
+    document.addEventListener('touchstart', (e) => {
+        if (window.scrollY === 0) {
+            pullStartY = e.touches[0].clientY;
+            isPulling = true;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isPulling) return;
+        const pullDistance = e.touches[0].clientY - pullStartY;
+        if (pullDistance > 0 && window.scrollY === 0) {
+            if (!pullIndicator) {
+                pullIndicator = document.createElement('div');
+                pullIndicator.style.cssText = 'position:fixed;top:0;left:0;right:0;text-align:center;padding:10px;background:#2d7a2d;color:white;font-size:14px;z-index:9999;transition:opacity 0.3s;';
+                pullIndicator.textContent = '↓ Pull to refresh';
+                document.body.prepend(pullIndicator);
             }
-        });
-    } else {
-        console.log('Refresh button not found, skipping refresh functionality');
-    }
+            if (pullDistance > 80) pullIndicator.textContent = '↑ Release to refresh';
+            else pullIndicator.textContent = '↓ Pull to refresh';
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!isPulling) return;
+        isPulling = false;
+        const pullDistance = e.changedTouches[0].clientY - pullStartY;
+        if (pullDistance > 80 && window.scrollY === 0) {
+            if (pullIndicator) pullIndicator.textContent = 'Refreshing...';
+            setTimeout(() => window.location.reload(), 300);
+        } else {
+            if (pullIndicator) { pullIndicator.remove(); pullIndicator = null; }
+        }
+    }, { passive: true });
 
     // Helper function to show notifications
     function showNotification(message, type = 'info') {
@@ -1399,54 +1459,8 @@ async function handleHomePageLogic() {
         return a.size === b.size && [...a].every(value => b.has(value));
     }
 
-    // Auto-refresh posts every 5 seconds (only when not in search mode)
-    let lastPostCount = 0;
-    let lastPostIds = new Set();
-
-    setInterval(async () => {
-        if (isSearchMode) return;
-
-        try {
-            const response = await fetch('/api/posts?t=' + Date.now());
-            if (!response.ok) return;
-
-            const postsData = await response.json();
-            const currentPostIds = new Set(postsData.map(post => post.id));
-            const countChanged = postsData.length !== lastPostCount;
-            const idsChanged = !setsEqual(currentPostIds, lastPostIds);
-
-            if (countChanged || idsChanged) {
-                console.log('Posts changed, refreshing...');
-                lastPostCount = postsData.length;
-                lastPostIds = currentPostIds;
-
-                postContainer.innerHTML = '';
-                if (postsData.length === 0) {
-                    postContainer.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No posts yet. Be the first to post!</p>';
-                } else {
-                    postsData.forEach(post => {
-                        const postCard = createPostElement(post);
-                        postContainer.appendChild(postCard);
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Auto-refresh failed:', error);
-        }
-    }, 5000);
-
     // Initial load
-    console.log('🚀 Starting initial post load...');
-    await loadPosts();
-    // Seed the refresh tracker with current state so it doesn't re-render immediately
-    try {
-        const r = await fetch('/api/posts?t=' + Date.now());
-        if (r.ok) {
-            const initial = await r.json();
-            lastPostCount = initial.length;
-            lastPostIds = new Set(initial.map(p => p.id));
-        }
-    } catch(e) {}
+    await loadPosts(1);
     console.log('✅ handleHomePageLogic setup complete');
 }
 
