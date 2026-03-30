@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ── Section Navigation ────────────────────────────────────────────────────────
-const sectionLoaders = { users: loadUsers, posts: loadPosts, reports: loadReports, banned: loadBanned };
+const sectionLoaders = { users: loadUsers, posts: loadPosts, reports: loadReports, banned: loadBanned, prices: loadPrices };
 
 function showSection(name) {
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
@@ -296,3 +296,41 @@ function toast(msg) {
 document.addEventListener('click', e => {
     if (e.target.classList.contains('modal')) e.target.classList.remove('show');
 });
+
+// ── Market Prices ─────────────────────────────────────────────────────────────
+async function loadPrices() {
+    setTableLoading('pricesTableBody', 5);
+    const data = await api('GET', '/api/market-prices');
+    if (!data || data.error) { toast('Failed to load prices'); return; }
+    const tbody = document.getElementById('pricesTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = data.map(p => `
+        <tr>
+            <td><strong>${esc(p.name)}</strong></td>
+            <td>
+                <input type="number" step="0.01" min="0" value="${parseFloat(p.price_per_kg).toFixed(2)}"
+                    id="price-input-${p.id}" style="width:80px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;">
+                <span style="color:#666;font-size:12px;"> RM/kg</span>
+            </td>
+            <td>${fmtDate(p.updated_date)}</td>
+            <td>${esc(p.updated_by || '-')}</td>
+            <td>
+                <button class="btn-action btn-primary" onclick="savePrice(${p.id})">Save</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function savePrice(id) {
+    const input = document.getElementById(`price-input-${id}`);
+    if (!input) return;
+    const price = parseFloat(input.value);
+    if (isNaN(price) || price < 0) { toast('Invalid price'); return; }
+    const res = await api('PUT', `/api/admin/market-prices/${id}`, { price_per_kg: price });
+    if (res && res.message === 'Price updated') {
+        toast('Price updated!');
+        loadPrices();
+    } else {
+        toast('Failed to update price');
+    }
+}
