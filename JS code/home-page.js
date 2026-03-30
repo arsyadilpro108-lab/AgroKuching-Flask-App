@@ -1461,28 +1461,6 @@ async function handleHomePageLogic() {
 
     // Initial load
     await loadPosts(1);
-
-    // Load market prices into right sidebar
-    fetch('/api/market-prices')
-        .then(r => r.json())
-        .then(prices => {
-            const list = document.getElementById('marketPricesList');
-            const updated = document.getElementById('marketUpdated');
-            if (!list || !prices.length) return;
-            list.innerHTML = prices.map(p =>
-                `<div class="market-price-row">
-                    <span class="market-price-name">${p.name}</span>
-                    <span class="market-price-val">RM${parseFloat(p.price_per_kg).toFixed(2)}</span>
-                </div>`
-            ).join('');
-            if (prices[0] && prices[0].updated_date && updated) {
-                updated.textContent = 'Updated: ' + new Date(prices[0].updated_date).toLocaleDateString('en-MY');
-            }
-        })
-        .catch(() => {
-            const list = document.getElementById('marketPricesList');
-            if (list) list.innerHTML = '';
-        });
     console.log('✅ handleHomePageLogic setup complete');
 }
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AgroKuching</title>
-    <link rel="stylesheet" href="/CSS code/home-page.css?v=4" />
+    <link rel="stylesheet" href="/CSS code/home-page.css?v=3" />
 </head>
 <body>
 
@@ -20,6 +20,11 @@
             <div class="search-dropdown" id="searchDropdown"></div>
         </div>
 
+        <button class="messages-btn" id="messagesBtn" onclick="window.location.href='/HTML code/messages.html'">
+            💬 Messages
+            <span class="message-badge" id="messageBadge" style="display: none;">0</span>
+        </button>
+
         <div class="profile-menu">
             <button class="profile-btn" id="profileBtn">👤</button> 
             <div class="dropdown" id="profileDropdown">
@@ -32,47 +37,17 @@
         </div>
     </header>
 
-    <div class="page-layout">
-        <!-- Left Sidebar -->
-        <aside class="left-sidebar">
-            <nav class="left-nav">
-                <a href="/HTML code/home-page.html" class="left-nav-item active">
-                    <span class="left-nav-icon">🏠</span>
-                    <span class="left-nav-label">Home</span>
-                </a>
-                <a href="/HTML code/messages.html" class="left-nav-item">
-                    <span class="left-nav-icon">💬</span>
-                    <span class="left-nav-label">Messages</span>
-                </a>
-                <a href="#" class="left-nav-item" id="marketPricesNavBtn">
-                    <span class="left-nav-icon">📊</span>
-                    <span class="left-nav-label">Market Prices</span>
-                </a>
-                <a href="/HTML code/create-post.html" class="left-nav-item">
-                    <span class="left-nav-icon">➕</span>
-                    <span class="left-nav-label">Create Post</span>
-                </a>
-            </nav>
-        </aside>
-
-        <!-- Center Feed -->
-        <main class="center-feed">
-            <div id="postContainer"></div>
-        </main>
-
-        <!-- Right Sidebar - Market Prices -->
-        <aside class="right-sidebar" id="rightSidebar">
-            <div class="market-panel">
-                <div class="market-panel-header">
-                    <span>📊 Market Prices</span>
-                    <span class="market-updated" id="marketUpdated"></span>
-                </div>
-                <div id="marketPricesList" class="market-prices-list">
-                    <div class="market-loading">Loading...</div>
-                </div>
+    <main>
+        <!-- Facebook-style Create Post Box -->
+        <div class="create-post-box" id="createPostBox">
+            <div class="create-post-plus-icon">+</div>
+            <div class="create-post-input" id="createPostInput">
+                Create a post
             </div>
-        </aside>
-    </div>
+        </div>
+
+        <div id="postContainer"></div>
+    </main>
 
     <script>
         // Debug functions
@@ -204,6 +179,6 @@
     </script>
     
     <!-- We link to the rewritten home-page.js -->
-    <script src="/JS code/home-page.js?v=6"></script>
+    <script src="/JS code/home-page.js?v=5"></script>
 </body>
 </html>
