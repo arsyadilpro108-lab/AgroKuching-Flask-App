@@ -15,20 +15,8 @@
             <span class="brand-name">AgroKuching</span>
         </div>
 
-        <!-- Category Filter + Search -->
+        <!-- Search -->
         <div class="search-bar-group">
-            <div class="category-dropdown-wrap">
-                <button class="category-btn" id="categoryBtn">All ▾</button>
-                <div class="category-dropdown" id="categoryDropdown">
-                    <a href="#" data-cat="">All</a>
-                    <a href="#" data-cat="Crops">Crops</a>
-                    <a href="#" data-cat="Livestock">Livestock</a>
-                    <a href="#" data-cat="Equipment">Equipment</a>
-                    <a href="#" data-cat="Seeds">Seeds</a>
-                    <a href="#" data-cat="Fertilizer">Fertilizer</a>
-                    <a href="#" data-cat="Other">Other</a>
-                </div>
-            </div>
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Search posts or users..." autocomplete="off" />
                 <button class="clear-search-icon" id="clearSearch" style="display:none;">&times;</button>
@@ -69,6 +57,22 @@
     </main>
 
     <!-- MODALS -->
+    <div class="modal" id="postModal">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <h2>Create a Post</h2>
+            <form id="postForm" autocomplete="off">
+                <label>Title</label><input type="text" id="postTitle" required autocomplete="off" />
+                <label>Price</label><input type="text" id="postPrice" required autocomplete="off" />
+                <label>Description</label><textarea id="postDescription" rows="4" required autocomplete="off"></textarea>
+                <label>Contact Info</label><input type="text" id="postContact" required autocomplete="off" />
+                <label>Product Images</label>
+                <input type="file" id="postImages" accept="image/*" multiple />
+                <div class="preview" id="imagePreview"></div>
+                <button type="submit" class="submit-btn">Post</button>
+            </form>
+        </div>
+    </div>
     <div class="modal" id="editModal">
         <div class="modal-content">
             <span class="close" id="closeEditModal">&times;</span>
