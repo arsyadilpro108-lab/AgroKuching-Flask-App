@@ -1100,11 +1100,11 @@ async function handleHomePageLogic() {
         // Add basic event listeners
         try {
             // Profile click
-            const posterName = postCard.querySelector('.poster-name');
+            const posterName = postCard.querySelector('.card-author');
             if (posterName) {
                 posterName.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    window.location.href = `/HTML code/profile.html?user=${e.target.dataset.username}`;
+                    window.location.href = `/HTML code/profile.html?user=${posterName.dataset.username}`;
                 });
             }
             

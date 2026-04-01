@@ -1504,7 +1504,75 @@ def send_message(current_user, username):
 
 @app.route('/HTML code/<path:filename>')
 def serve_html(filename):
-    return send_from_directory(os.path.join(ROOT_DIR, 'HTML code'), filename)
+    resp = send_from_directory(os.path.join(ROOT_DIR, 'HTML code'), filename)
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
+
+
+# ── Market Prices ─────────────────────────────────────────────────────────────
+_DEFAULT_PRICES = [
+    ('Kangkung', 2.50), ('Bayam', 3.00), ('Sawi', 3.50), ('Kobis', 4.00),
+    ('Brokoli', 8.00), ('Kailan', 5.00), ('Timun', 2.00), ('Terung', 3.50),
+    ('Kacang Panjang', 4.00), ('Tomato', 5.00), ('Cili', 12.00),
+    ('Bawang Merah', 8.00), ('Bawang Putih', 10.00), ('Halia', 7.00),
+    ('Labu', 3.00), ('Peria', 5.00), ('Petai', 15.00), ('Ulam Raja', 4.00),
+]
+
+def _ensure_market_prices_table(db):
+    try:
+        if USE_POSTGRES:
+            db.execute("""CREATE TABLE IF NOT EXISTS market_prices (
+                id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL,
+                price_per_kg REAL NOT NULL, unit TEXT DEFAULT 'kg',
+                updated_by TEXT, updated_date TEXT NOT NULL)""")
+        else:
+            db.execute("""CREATE TABLE IF NOT EXISTS market_prices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
+                price_per_kg REAL NOT NULL, unit TEXT DEFAULT 'kg',
+                updated_by TEXT, updated_date TEXT NOT NULL)""")
+        db.commit()
+    except Exception:
+        pass
+
+@app.route('/api/market-prices', methods=['GET'])
+def get_market_prices():
+    try:
+        db = get_db()
+        _ensure_market_prices_table(db)
+        count = db.execute("SELECT COUNT(*) as cnt FROM market_prices").fetchone()['cnt']
+        if count == 0:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for name, price in _DEFAULT_PRICES:
+                try:
+                    db.execute("INSERT INTO market_prices (name, price_per_kg, unit, updated_by, updated_date) VALUES (?, ?, ?, ?, ?)",
+                               (name, price, 'kg', 'system', now))
+                except Exception:
+                    pass
+            db.commit()
+        rows = db.execute("SELECT * FROM market_prices ORDER BY name").fetchall()
+        return jsonify([dict(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
+
+@app.route('/api/admin/market-prices/<int:price_id>', methods=['PUT'])
+@token_required
+def update_market_price(current_user, price_id):
+    db = get_db()
+    admin = db.execute("SELECT role FROM users WHERE id = ?", (current_user['id'],)).fetchone()
+    if not admin or admin['role'] != 'admin':
+        return jsonify({'message': 'Admin access required'}), 403
+    data = request.get_json(silent=True) or {}
+    price = data.get('price_per_kg')
+    if price is None:
+        return jsonify({'message': 'price_per_kg required'}), 400
+    try:
+        db.execute("UPDATE market_prices SET price_per_kg = ?, updated_by = ?, updated_date = ? WHERE id = ?",
+                   (float(price), current_user['username'], datetime.now().strftime("%Y-%m-%d %H:%M:%S"), price_id))
+        db.commit()
+        return jsonify({'message': 'Price updated'}), 200
+    except Exception as e:
+        db.rollback()
+        return jsonify({'message': 'Server error', 'error': str(e)}), 500
 
 @app.route('/CSS code/<path:filename>')
 def serve_css(filename):
