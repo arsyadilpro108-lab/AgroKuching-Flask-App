@@ -358,8 +358,28 @@ async function handleHomePageLogic() {
     }
 
     // Modal/Dropdown Listeners
-    // Facebook-style create post box
-    const createPostBox = document.getElementById('createPostBox');
+
+    // Category dropdown
+    const categoryBtn = document.getElementById('categoryBtn');
+    const categoryDropdown = document.getElementById('categoryDropdown');
+    if (categoryBtn && categoryDropdown) {
+        categoryBtn.addEventListener('click', e => { e.stopPropagation(); categoryDropdown.classList.toggle('show'); });
+        categoryDropdown.querySelectorAll('a').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                const cat = a.dataset.cat;
+                categoryBtn.textContent = (cat || 'All') + ' ▾';
+                categoryDropdown.classList.remove('show');
+                // Filter posts
+                document.querySelectorAll('.post-card').forEach(card => {
+                    if (!cat) { card.style.display = ''; return; }
+                    const title = card.querySelector('.card-title')?.textContent || '';
+                    card.style.display = title ? '' : 'none'; // basic filter — extend later
+                });
+            });
+        });
+        document.addEventListener('click', () => categoryDropdown.classList.remove('show'));
+    }
     
     if (createPostBox) {
         createPostBox.addEventListener('click', () => {
@@ -1028,39 +1048,9 @@ async function handleHomePageLogic() {
     
     // Render a Single Post Card
     function createPostElement(post) {
-        console.log('🎨 Creating post element for:', post.title);
-        
         const postCard = document.createElement("div");
         postCard.className = "post-card";
 
-        // Create simple image display
-        let imagesHTML = '';
-        if (post.images && post.images.length > 0) {
-            const imageCount = post.images.length;
-            const displayCount = Math.min(imageCount, 4);
-            const gridClass = `grid-${displayCount}`;
-            
-            imagesHTML = `<div class="post-images-grid ${gridClass}">`;
-            
-            for (let i = 0; i < displayCount; i++) {
-                const isLast = i === 3 && imageCount > 4;
-                const remaining = imageCount - 4;
-                
-                imagesHTML += `
-                    <div class="grid-image-wrapper" data-index="${i}">
-                        <img src="${post.images[i]}" class="grid-image-bg" alt="">
-                        <img src="${post.images[i]}" class="grid-image" alt="${post.title}">
-                        ${isLast ? `<div class="grid-image-overlay">+${remaining}</div>` : ''}
-                    </div>
-                `;
-            }
-            
-            imagesHTML += '</div>';
-        }
-        
-        const postDate = new Date(post.post_date).toLocaleString();
-
-        // Simple menu for now - just show for post authors
         const isAuthor = currentUsername && currentUsername === post.author_username;
         const authorOptions = isAuthor ? `
             <button class="edit-option" data-post-id="${post.id}">✏️ Edit</button>
@@ -1080,24 +1070,31 @@ async function handleHomePageLogic() {
             </div>
         `;
 
-        // DM button (only show if not own post)
-        const dmButton = isAuthor ? '' : `<button class="dm-user-btn" data-username="${post.author_username}">💬 DM User</button>`;
-        
+        // Thumbnail — first image or placeholder
+        const thumb = (post.images && post.images.length > 0)
+            ? `<img src="${post.images[0]}" class="card-thumb" alt="${post.title}" onerror="this.src='/pictures/Default PFP.png'">`
+            : `<div class="card-thumb-placeholder">🌿</div>`;
+
+        const dmButton = isAuthor ? '' : `<button class="dm-user-btn card-dm-btn" data-username="${post.author_username}">💬 DM</button>`;
+
         postCard.innerHTML = `
-            <div class="poster-info">
-                <img src="${(post.author_profile_pic && post.author_profile_pic !== 'null' && post.author_profile_pic !== '') ? post.author_profile_pic : '/pictures/Default PFP.png'}" alt="Profile" class="poster-pic" onerror="this.src='/pictures/Default PFP.png'">
-                <span class="poster-name" data-username="${post.author_username}">${post.author_username}</span>
-                ${menuHTML}
+            <div class="card-thumb-wrap">${thumb}</div>
+            <div class="card-body">
+                <div class="card-top-row">
+                    <span class="card-title">${post.title}</span>
+                    ${menuHTML}
+                </div>
+                <div class="card-price">${post.price ? 'RM ' + post.price : 'Price N/A'}</div>
+                <div class="card-desc">${post.description.length > 60 ? post.description.slice(0,60)+'…' : post.description}</div>
+                <div class="card-footer">
+                    <span class="card-author" data-username="${post.author_username}">
+                        <img src="${(post.author_profile_pic && post.author_profile_pic !== 'null') ? post.author_profile_pic : '/pictures/Default PFP.png'}" class="card-author-pic" onerror="this.src='/pictures/Default PFP.png'">
+                        ${post.author_username}
+                    </span>
+                    ${dmButton}
+                </div>
             </div>
-            <div class="post-content">
-                <h3>${post.title}</h3>
-                <p><strong>Price:</strong> ${post.price || 'N/A'}</p>
-                <p>${post.description}</p>
-                <p><strong>Contact:</strong> ${post.contact}</p>
-            </div>
-            ${imagesHTML}
-            ${dmButton}
-            <p style="font-size: 0.8em; color: #777; margin-top: 10px;">Posted: ${postDate}</p>
+        `;
         `;
         
         // Add basic event listeners
